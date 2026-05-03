@@ -14,7 +14,7 @@ import {
 import { formatMoney, formatDate, formatFrequency, formatMonthYear } from "@/utils";
 import { motion } from "framer-motion";
 import {
-  ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw, BarChart2, Zap, FileBarChart2,
+  ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw, BarChart2, Zap, FileBarChart2, Sparkles,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import type { Transaction } from "@/types";
@@ -126,6 +126,25 @@ export default function Dashboard() {
         </header>
 
         <MonthSelector currentDate={currentDate} onChange={setCurrentDate} />
+
+        {/* Setup prompt — shown when user has no accounts and no recurring rules */}
+        {accounts.length === 0 && recurringRules.length === 0 && (
+          <Link href="/setup">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="glass-card rounded-2xl border border-indigo-500/25 bg-indigo-500/5 p-4 flex items-center gap-3 cursor-pointer hover:bg-indigo-500/10 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-indigo-300">Set up your real financial profile</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Add accounts, income, bills, budgets and goals.</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
+            </motion.div>
+          </Link>
+        )}
 
         {/* Balance card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 rounded-3xl relative overflow-hidden" data-testid="card-total-balance">

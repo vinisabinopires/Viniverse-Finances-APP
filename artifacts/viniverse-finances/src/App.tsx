@@ -17,6 +17,7 @@ import Goals from "@/pages/Goals";
 import NetWorth from "@/pages/NetWorth";
 import WeeklyCashflow from "@/pages/WeeklyCashflow";
 import Reports from "@/pages/Reports";
+import Setup from "@/pages/Setup";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/net-worth" component={NetWorth} />
       <Route path="/weekly-cashflow" component={WeeklyCashflow} />
       <Route path="/reports" component={Reports} />
+      <Route path="/setup" component={Setup} />
       <Route component={NotFound} />
     </Switch>
   );

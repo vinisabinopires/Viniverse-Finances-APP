@@ -1,0 +1,277 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This phase is called Phase 2.0 — Real Life Setup Wizard.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, PIN lock, PWA setup, backup/import/export, and all current app behavior.
+
+Goal:
+Create a guided setup experience so the user can transition from demo/testing data to real personal finance usage.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, or external services.
+- Do not add biometric auth.
+- Do not add charts in this phase.
+- Do not change the database schema unless absolutely necessary.
+- Prefer using existing tables: accounts, transactions, budgets, recurringRules, financialGoals, weeklyPlans, netWorthSnapshots.
+- Preserve existing user data unless the user explicitly chooses to remove demo/sample data.
+- Do not break backup/import/export.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+1. Add Real Life Setup page
+Create a new page:
+- /setup
+
+Add a polished card/button in More/Settings:
+- “Real Life Setup”
+- Subtitle: “Set up your real accounts, income, bills, goals, and budgets.”
+
+2. Setup Wizard structure
+Create a mobile-friendly multi-step wizard with progress indicator.
+
+Steps:
+1. Welcome
+2. Clean demo data
+3. Accounts
+4. Income
+5. Fixed expenses
+6. Budgets
+7. Goals
+8. Review & Finish
+
+Use dark glassmorphism style.
+
+3. Welcome step
+Explain briefly:
+“Use this setup to replace demo data with your real financial structure. You can skip any step and edit everything later.”
+
+Show:
+- Start Setup
+- Exit
+
+4. Clean demo data step
+Offer safe options:
+
+Option A:
+“Keep my current data”
+
+Option B:
+“Remove demo/sample data only if possible”
+
+Option C:
+“Start fresh by clearing all financial data”
+
+For Option C:
+- Require typing DELETE
+- Reuse existing clear-all safety behavior if possible
+
+Important:
+Do not remove PIN settings.
+Do not silently delete anything.
+
+If the app cannot confidently detect demo data, say:
+“Demo data could not be detected with certainty. Use Start Fresh only if you already exported a backup.”
+
+5. Accounts step
+Let user quickly create real accounts.
+
+Suggested account templates:
+- US Checking
+- US Savings
+- Cash Wallet
+- Credit Card
+- Brazil Investments
+- Brazil Checking/Savings
+- Custom Account
+
+Fields:
+- account name
+- type
+- currency USD or BRL
+- initial balance
+
+Allow multiple accounts to be added in one step.
+
+Use existing account creation logic.
+
+6. Income step
+Let user create recurring income rules.
+
+Common templates:
+- Weekly Salary
+- Biweekly Salary
+- Monthly Salary
+- Freelance Income
+- Other Income
+
+Fields:
+- name
+- amount
+- currency
+- account
+- frequency
+- start date
+- category default: Salary or Other Income
+
+Use existing recurringRules table and logic.
+
+7. Fixed expenses step
+Let user create recurring expense rules.
+
+Suggested templates:
+- Rent
+- Internet
+- Phone
+- Apple/iCloud
+- Apple Music
+- AppleCare
+- Gas
+- Insurance
+- Subscriptions
+- Custom Expense
+
+Fields:
+- name
+- amount
+- currency
+- account
+- category
+- frequency
+- start date
+- notes optional
+
+Use existing recurringRules table and logic.
+
+8. Budgets step
+Let user create initial monthly budgets.
+
+Suggested categories:
+- Groceries
+- Dining
+- Transportation
+- Gas
+- Shopping
+- Entertainment
+- Travel
+- Health
+- Education
+- Subscriptions
+- Other Expense
+
+Fields:
+- category
+- currency
+- monthly limit
+- month defaults to current month
+
+Use existing budgets table and logic.
+
+9. Goals step
+Let user create financial goals.
+
+Suggested goals:
+- Emergency Fund
+- Travel
+- Investment
+- Savings
+- Debt Payoff
+- Custom
+
+Fields:
+- name
+- goal type
+- target amount
+- current amount
+- currency
+- target date optional
+- notes optional
+
+Use existing financialGoals table and logic.
+
+10. Review & Finish step
+Show a summary:
+- accounts to be created
+- recurring income rules
+- recurring expense rules
+- budgets
+- goals
+
+Button:
+- “Finish Setup”
+
+When finished:
+- Save everything using existing add functions
+- Show success feedback
+- Navigate to Dashboard
+- Optionally show a small reminder:
+  “Create a backup after adding real data.”
+
+11. Safety and idempotency
+Prevent double-submit.
+Do not create duplicates if user taps Finish multiple times.
+Use loading state while saving.
+Show clear error messages if something fails.
+
+12. More/Settings integration
+In More/Settings Features section, add:
+- Real Life Setup
+- Recurring Transactions
+- Financial Goals
+- Net Worth Tracker
+- Weekly Cashflow
+- Monthly Reports
+
+Keep it visually organized. If the list is getting long, use compact feature cards.
+
+13. Dashboard optional prompt
+If the app has very little user data, show a subtle Dashboard prompt:
+“Set up your real financial profile”
+with a link to /setup.
+
+Do not show this if the user already has multiple accounts/transactions/recurring rules.
+
+14. Backup reminder
+After setup finishes, show a prompt:
+“Export a backup now”
+with a button that navigates to More/Settings.
+
+Do not automatically export without user action.
+
+15. UI polish
+Keep the dark iOS-like glassmorphism style.
+Make wizard steps touch-friendly.
+Use large buttons and clean spacing.
+Keep it comfortable on iPhone.
+Avoid clutter.
+
+16. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix issues.
+
+Manually verify:
+- More → Real Life Setup opens /setup
+- Wizard navigation works
+- User can keep current data
+- User can choose start fresh only after typing DELETE
+- Add accounts step works
+- Add recurring income step works
+- Add fixed expense step works
+- Add budgets step works
+- Add goals step works
+- Review step shows correct summary
+- Finish saves everything once
+- Dashboard reflects newly created accounts/rules/goals/budgets
+- Existing pages still work:
+  Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, PIN Lock, Export, Import, Clear All Data
+- Backup still excludes PIN settings
+- PWA behavior still works
+
+Deliverable:
+At the end, summarize:
+- files created
+- files updated
+- whether database schema changed
+- setup wizard behavior
+- safety protections
+- what I should test manually next
