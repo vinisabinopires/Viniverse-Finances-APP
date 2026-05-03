@@ -7,6 +7,7 @@ import { Onboarding } from "@/components/Onboarding";
 
 import Dashboard from "@/pages/Dashboard";
 import Transactions from "@/pages/Transactions";
+import Budgets from "@/pages/Budgets";
 import Accounts from "@/pages/Accounts";
 import More from "@/pages/More";
 import NotFound from "@/pages/not-found";
@@ -18,6 +19,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/transactions" component={Transactions} />
+      <Route path="/budgets" component={Budgets} />
       <Route path="/accounts" component={Accounts} />
       <Route path="/more" component={More} />
       <Route component={NotFound} />
@@ -27,7 +29,6 @@ function Router() {
 
 function App() {
   const [onboarded, setOnboarded] = useState(() => {
-    // Migrate users who went through the old seed flow
     if (localStorage.getItem('viniverse-seeded')) {
       localStorage.setItem('viniverse-onboarded', 'true');
     }

@@ -21,3 +21,14 @@ export interface Transaction {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Budget {
+  id: string;
+  category: string;
+  currencyCode: 'USD' | 'BRL';
+  monthlyLimitCents: number;
+  month: string; // YYYY-MM
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}

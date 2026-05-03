@@ -18,10 +18,7 @@ export default function More() {
     localStorage.removeItem('viniverse-onboarded');
     setShowDeleteConfirm(false);
     setDeleteInputValue("");
-    toast({
-      title: "Data cleared",
-      description: "All data has been deleted. Reload to start fresh.",
-    });
+    toast({ title: "Data cleared", description: "All data deleted. Reloading…" });
     setTimeout(() => { window.location.reload(); }, 1200);
   };
 
@@ -29,7 +26,14 @@ export default function More() {
     try {
       const accounts = await db.accounts.toArray();
       const transactions = await db.transactions.toArray();
-      const data = { accounts, transactions, exportedAt: new Date().toISOString(), version: 1 };
+      const budgets = await db.budgets.toArray();
+      const data = {
+        accounts,
+        transactions,
+        budgets,
+        exportedAt: new Date().toISOString(),
+        version: 2,
+      };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -57,45 +61,34 @@ export default function More() {
       const text = await file.text();
       parsed = JSON.parse(text);
     } catch {
-      toast({
-        title: "Import failed",
-        description: "The file is not valid JSON.",
-        variant: "destructive",
-      });
+      toast({ title: "Import failed", description: "The file is not valid JSON.", variant: "destructive" });
       return;
     }
 
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      !Array.isArray((parsed as Record<string, unknown>).accounts) ||
-      !Array.isArray((parsed as Record<string, unknown>).transactions)
-    ) {
-      toast({
-        title: "Import failed",
-        description: "The file doesn't look like a Viniverse backup.",
-        variant: "destructive",
-      });
+    const p = parsed as Record<string, unknown>;
+    if (typeof p !== "object" || p === null || !Array.isArray(p.accounts) || !Array.isArray(p.transactions)) {
+      toast({ title: "Import failed", description: "The file doesn't look like a Viniverse backup.", variant: "destructive" });
       return;
     }
 
     try {
-      const { accounts, transactions } = parsed as { accounts: unknown[]; transactions: unknown[] };
+      const { accounts, transactions } = p as { accounts: unknown[]; transactions: unknown[] };
+      const budgets = Array.isArray(p.budgets) ? (p.budgets as unknown[]) : [];
+
       await clearAllData();
       await db.accounts.bulkAdd(accounts as Parameters<typeof db.accounts.bulkAdd>[0]);
       await db.transactions.bulkAdd(transactions as Parameters<typeof db.transactions.bulkAdd>[0]);
+      if (budgets.length > 0) {
+        await db.budgets.bulkAdd(budgets as Parameters<typeof db.budgets.bulkAdd>[0]);
+      }
       localStorage.setItem('viniverse-onboarded', 'true');
       toast({
         title: "Import successful",
-        description: `Restored ${accounts.length} accounts and ${transactions.length} transactions.`,
+        description: `Restored ${accounts.length} accounts, ${transactions.length} transactions, ${budgets.length} budgets.`,
       });
       setTimeout(() => { window.location.reload(); }, 1200);
     } catch {
-      toast({
-        title: "Import failed",
-        description: "Something went wrong while restoring your data.",
-        variant: "destructive",
-      });
+      toast({ title: "Import failed", description: "Something went wrong while restoring your data.", variant: "destructive" });
     }
   };
 
@@ -114,7 +107,7 @@ export default function More() {
             </div>
             <div>
               <h3 className="font-semibold">Viniverse – Finances</h3>
-              <p className="text-xs text-muted-foreground">Version 1.1.0 · Personal finance tracker</p>
+              <p className="text-xs text-muted-foreground">Version 1.2.0 · Personal finance tracker</p>
             </div>
           </div>
         </div>
@@ -124,8 +117,7 @@ export default function More() {
           <div>
             <p className="text-sm font-medium text-amber-400">Local storage only</p>
             <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-              All your data lives exclusively in this browser. It will be lost if you clear browser
-              data or switch devices. Export a backup regularly to keep your data safe.
+              All your data lives exclusively in this browser. Export a backup regularly to keep it safe.
             </p>
           </div>
         </div>
@@ -140,11 +132,11 @@ export default function More() {
               className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left"
             >
               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                <Download className="w-4.5 h-4.5 text-emerald-400" />
+                <Download className="w-4 h-4 text-emerald-400" />
               </div>
               <div>
                 <h3 className="font-medium text-sm">Export Backup</h3>
-                <p className="text-xs text-muted-foreground">Save your data as a JSON file</p>
+                <p className="text-xs text-muted-foreground">Accounts, transactions &amp; budgets</p>
               </div>
             </button>
 
@@ -154,11 +146,11 @@ export default function More() {
               className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left"
             >
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                <Upload className="w-4.5 h-4.5 text-blue-400" />
+                <Upload className="w-4 h-4 text-blue-400" />
               </div>
               <div>
                 <h3 className="font-medium text-sm">Import Backup</h3>
-                <p className="text-xs text-muted-foreground">Restore data from a JSON file</p>
+                <p className="text-xs text-muted-foreground">Restore from a JSON file</p>
               </div>
             </button>
             <input
@@ -175,7 +167,7 @@ export default function More() {
               className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left text-rose-400"
             >
               <div className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center flex-shrink-0">
-                <Trash2 className="w-4.5 h-4.5 text-rose-400" />
+                <Trash2 className="w-4 h-4 text-rose-400" />
               </div>
               <div>
                 <h3 className="font-medium text-sm">Clear All Data</h3>
@@ -192,7 +184,7 @@ export default function More() {
               <div>
                 <p className="text-sm font-semibold text-rose-400">Confirm deletion</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  This will permanently erase all accounts and transactions. Type{" "}
+                  This will permanently erase all accounts, transactions, and budgets. Type{" "}
                   <span className="font-mono font-bold text-rose-400">DELETE</span> to confirm.
                 </p>
               </div>

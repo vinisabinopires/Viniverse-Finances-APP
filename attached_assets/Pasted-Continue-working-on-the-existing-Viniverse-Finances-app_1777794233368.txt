@@ -1,0 +1,146 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. Inspect the current codebase first and preserve the current React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, onboarding flow, transaction/account detail drawers, and current app behavior.
+
+Goal of this phase:
+Add monthly budget and spending limit functionality so the user can set a spending cap per category and see whether they are under, close to, or over budget.
+
+Important:
+- Keep everything local-first using IndexedDB/Dexie.
+- Do not add backend, authentication, Firebase, Supabase, or paid APIs.
+- Avoid heavy chart libraries.
+- Use simple CSS/Tailwind progress bars and cards.
+- Preserve all existing data and features.
+- Do not duplicate seed/demo data.
+- Do not break backup/import/export.
+
+Tasks:
+
+1. Add Budget data model
+Create a new Dexie table for budgets.
+
+Budget fields:
+- id
+- category
+- currencyCode: USD or BRL
+- monthlyLimitCents
+- month: YYYY-MM format
+- notes optional
+- createdAt
+- updatedAt
+
+Important behavior:
+- Budgets are monthly.
+- Budgets are category-based.
+- Budgets should be currency-specific.
+- Do not mix USD and BRL spending into the same budget calculation.
+- A user can have separate budgets for the same category in different months or currencies.
+
+2. Add Budgets page
+Add a new page called Budgets.
+
+The page should show:
+- Selected month selector using the same month navigation style as Dashboard/Transactions
+- List of budgets for the selected month
+- For each budget card:
+  - category
+  - currency
+  - monthly limit
+  - amount spent this month in that category
+  - remaining amount
+  - percentage used
+  - progress bar
+  - visual status:
+    - Safe: under 70%
+    - Caution: 70% to 99%
+    - Over budget: 100% or more
+- Empty state when no budgets exist for the selected month
+- Add Budget button
+- Edit Budget
+- Delete Budget with confirmation
+
+3. Budget form
+Create or update a budget form with:
+- category picker using the existing expense categories if possible
+- custom category option
+- currency selection: USD or BRL
+- monthly limit amount input
+- month selector or default to currently selected month
+- optional notes
+
+The form should support both add and edit mode.
+
+4. Navigation
+Add Budgets to the bottom navigation.
+
+New bottom navigation order:
+- Home
+- Transactions
+- Budgets
+- Accounts
+- More
+
+Make sure it still fits nicely on mobile screens.
+
+5. Dashboard integration
+Add a new section on the Dashboard called “Budget Watch”.
+
+Show the top budget alerts for the selected month:
+- Over-budget categories first
+- Then categories close to budget
+- Then safe categories
+- Limit to 3 or 5 items so the dashboard stays clean
+
+Each item should show:
+- category
+- spent vs limit
+- percentage used
+- small progress bar
+- status label
+
+If there are no budgets, show a small prompt:
+“Create your first monthly budget to track spending limits.”
+
+6. Calculations
+Calculate spending from existing expense transactions only.
+Rules:
+- Only EXPENSE transactions count toward budgets.
+- Match by category, month, and currencyCode.
+- Income transactions do not count.
+- If category names differ by casing, compare case-insensitively.
+- Use amountCents safely as integer cents.
+
+7. Backup/import/export
+Update backup export/import to include budgets.
+Import validation must support budgets safely.
+Invalid budget data should not break the app.
+
+8. UI polish
+- Keep the dark iOS-like glassmorphism visual style.
+- Budget cards should feel premium and touch-friendly.
+- Use clear colors/states for safe/caution/over-budget, but keep the design elegant.
+- Make progress bars smooth and readable.
+- Ensure the floating action button does not cover budget cards or bottom navigation.
+- Keep desktop usable, but mobile-first.
+
+9. Type safety and testing
+Run TypeScript checks and fix any errors.
+Check console logs and fix any runtime errors.
+
+Manually verify:
+- Create a budget
+- Edit a budget
+- Delete a budget
+- Budget progress updates based on existing transactions
+- Dashboard Budget Watch appears correctly
+- Month selector changes budget calculations
+- USD and BRL budgets remain separate
+- Backup export includes budgets
+- Import restores budgets
+- Existing Transactions, Accounts, More, and Dashboard still work
+
+Deliverable:
+At the end, summarize:
+- files created
+- files updated
+- database changes
+- features added
+- what I should test manually next

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 
-const INCOME_CATEGORIES = [
+export const INCOME_CATEGORIES = [
   "Salary",
   "Freelance",
   "Refund",
@@ -9,8 +9,9 @@ const INCOME_CATEGORIES = [
   "Other Income",
 ];
 
-const EXPENSE_CATEGORIES = [
+export const EXPENSE_CATEGORIES = [
   "Rent",
+  "Housing",
   "Groceries",
   "Dining",
   "Transportation",
@@ -23,6 +24,7 @@ const EXPENSE_CATEGORIES = [
   "Entertainment",
   "Education",
   "Travel",
+  "Food",
   "Other Expense",
 ];
 

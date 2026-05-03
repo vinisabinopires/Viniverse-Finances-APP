@@ -1,20 +1,33 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { TransactionDrawer } from "@/components/TransactionDrawer";
 import { TransactionDetailDrawer } from "@/components/TransactionDetailDrawer";
 import { MonthSelector } from "@/components/MonthSelector";
 import { TransactionCard } from "@/components/TransactionCard";
-import { useLiveAccounts, useLiveTransactions } from "@/hooks/use-finance";
+import { useLiveAccounts, useLiveTransactions, useLiveBudgets, calcBudgetSpent } from "@/hooks/use-finance";
 import { formatMoney } from "@/utils";
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, TrendingUp } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight } from "lucide-react";
 import type { Transaction } from "@/types";
+
+function getBudgetStatus(pct: number) {
+  if (pct >= 100) return { label: "Over Budget", color: "rose" } as const;
+  if (pct >= 70) return { label: "Caution", color: "amber" } as const;
+  return { label: "Safe", color: "emerald" } as const;
+}
+
+const barColors = { emerald: "bg-emerald-500/70", amber: "bg-amber-500/70", rose: "bg-rose-500/70" };
+const textColors = { emerald: "text-emerald-400", amber: "text-amber-400", rose: "text-rose-400" };
 
 export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const accounts = useLiveAccounts();
   const transactions = useLiveTransactions();
+  const budgets = useLiveBudgets();
+
+  const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
 
   const currentMonthTransactions = transactions.filter((t) => {
     const tDate = new Date(t.occurredAt);
@@ -24,11 +37,12 @@ export default function Dashboard() {
     );
   });
 
-  const monthIncomeTransactions = currentMonthTransactions.filter((t) => t.type === "INCOME");
-  const monthExpenseTransactions = currentMonthTransactions.filter((t) => t.type === "EXPENSE");
-
-  const monthIncome = monthIncomeTransactions.reduce((acc, t) => acc + t.amountCents, 0);
-  const monthExpense = monthExpenseTransactions.reduce((acc, t) => acc + t.amountCents, 0);
+  const monthIncome = currentMonthTransactions
+    .filter((t) => t.type === "INCOME")
+    .reduce((acc, t) => acc + t.amountCents, 0);
+  const monthExpense = currentMonthTransactions
+    .filter((t) => t.type === "EXPENSE")
+    .reduce((acc, t) => acc + t.amountCents, 0);
 
   const totalUsdBalance = accounts
     .filter((a) => a.currencyCode === "USD")
@@ -48,21 +62,31 @@ export default function Dashboard() {
       return acc + account.initialBalanceCents + income - expense;
     }, 0);
 
-  const categoryTotals = monthExpenseTransactions.reduce<Record<string, number>>((acc, t) => {
-    acc[t.category] = (acc[t.category] || 0) + t.amountCents;
-    return acc;
-  }, {});
+  const categoryTotals = currentMonthTransactions
+    .filter((t) => t.type === "EXPENSE")
+    .reduce<Record<string, number>>((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amountCents;
+      return acc;
+    }, {});
 
-  const topCategories = Object.entries(categoryTotals)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
+  const topCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
   const maxCategoryAmount = topCategories[0]?.[1] || 1;
   const totalBar = monthIncome + monthExpense || 1;
   const incomeBarPct = Math.round((monthIncome / totalBar) * 100);
   const expenseBarPct = Math.round((monthExpense / totalBar) * 100);
 
   const recentTransactions = currentMonthTransactions.slice(0, 5);
+
+  // Budget Watch: budgets for current month, sorted over→caution→safe
+  const monthBudgets = budgets
+    .filter((b) => b.month === currentMonth)
+    .map((b) => {
+      const spent = calcBudgetSpent(transactions, b.category, b.month, b.currencyCode);
+      const pct = Math.round((spent / b.monthlyLimitCents) * 100);
+      return { budget: b, spent, pct };
+    })
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 5);
 
   return (
     <Layout>
@@ -76,6 +100,7 @@ export default function Dashboard() {
 
         <MonthSelector currentDate={currentDate} onChange={setCurrentDate} />
 
+        {/* Balance card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -86,13 +111,9 @@ export default function Dashboard() {
           <div className="relative z-10">
             <p className="text-sm font-medium text-muted-foreground mb-1">Total Balance</p>
             <div className="flex flex-col gap-1 mb-6">
-              <h2 className="text-4xl font-bold tracking-tight">
-                {formatMoney(totalUsdBalance, "USD")}
-              </h2>
+              <h2 className="text-4xl font-bold tracking-tight">{formatMoney(totalUsdBalance, "USD")}</h2>
               {totalBrlBalance !== 0 && (
-                <p className="text-sm text-muted-foreground font-medium">
-                  + {formatMoney(totalBrlBalance, "BRL")}
-                </p>
+                <p className="text-sm text-muted-foreground font-medium">+ {formatMoney(totalBrlBalance, "BRL")}</p>
               )}
             </div>
 
@@ -138,6 +159,77 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
+        {/* Budget Watch */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="glass-card p-5 rounded-2xl"
+          data-testid="card-budget-watch"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Budget Watch
+              </h3>
+            </div>
+            <Link href="/budgets" className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
+              All <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {monthBudgets.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                No budgets for this month.{" "}
+                <Link href="/budgets" className="text-primary hover:underline">
+                  Create your first budget
+                </Link>{" "}
+                to track spending limits.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {monthBudgets.map(({ budget, spent, pct }, i) => {
+                const status = getBudgetStatus(pct);
+                return (
+                  <motion.div
+                    key={budget.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="space-y-1.5"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-medium truncate">{budget.category}</span>
+                        <span className={`text-[10px] font-semibold shrink-0 ${textColors[status.color]}`}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <span className={`text-xs font-medium tabular-nums shrink-0 ${textColors[status.color]}`}>
+                        {pct}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${barColors[status.color]}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{formatMoney(spent, budget.currencyCode)} spent</span>
+                      <span>of {formatMoney(budget.monthlyLimitCents, budget.currencyCode)}</span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Top Expenses */}
         {topCategories.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -181,9 +273,9 @@ export default function Dashboard() {
           </motion.div>
         )}
 
+        {/* Recent Transactions */}
         <div>
           <h3 className="font-semibold text-lg mb-3">Recent Transactions</h3>
-
           <div className="space-y-2">
             {recentTransactions.length === 0 ? (
               <div className="text-center py-10 glass-card rounded-2xl">
