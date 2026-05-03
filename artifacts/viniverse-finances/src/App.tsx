@@ -2,8 +2,8 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useEffect, useState } from "react";
-import { seedDatabase } from "@/db/seed";
+import { useState } from "react";
+import { Onboarding } from "@/components/Onboarding";
 
 import Dashboard from "@/pages/Dashboard";
 import Transactions from "@/pages/Transactions";
@@ -26,14 +26,16 @@ function Router() {
 }
 
 function App() {
-  const [seeded, setSeeded] = useState(false);
+  const [onboarded, setOnboarded] = useState(() => {
+    // Migrate users who went through the old seed flow
+    if (localStorage.getItem('viniverse-seeded')) {
+      localStorage.setItem('viniverse-onboarded', 'true');
+    }
+    return !!localStorage.getItem('viniverse-onboarded');
+  });
 
-  useEffect(() => {
-    seedDatabase().then(() => setSeeded(true));
-  }, []);
-
-  if (!seeded) {
-    return <div className="min-h-screen bg-background flex items-center justify-center text-foreground">Loading...</div>;
+  if (!onboarded) {
+    return <Onboarding onComplete={() => setOnboarded(true)} />;
   }
 
   return (
@@ -49,4 +51,3 @@ function App() {
 }
 
 export default App;
-

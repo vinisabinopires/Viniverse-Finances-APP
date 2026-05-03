@@ -16,6 +16,7 @@ export interface Transaction {
   accountId: string;
   category: string;
   description: string;
+  notes?: string;
   occurredAt: string;
   createdAt: string;
   updatedAt: string;

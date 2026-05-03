@@ -1,15 +1,11 @@
 import { db } from './db';
-import { format } from 'date-fns';
 
-export async function seedDatabase() {
-  const isSeeded = localStorage.getItem('viniverse-seeded');
-  if (isSeeded) return;
-
+export async function seedDemoData() {
   const now = new Date();
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const formattedNow = now.toISOString();
 
-  await db.accounts.bulkAdd([
+  await db.accounts.bulkPut([
     {
       id: 'acc-1',
       name: 'Chase Checking',
@@ -39,40 +35,83 @@ export async function seedDatabase() {
     },
   ]);
 
-  await db.transactions.bulkAdd([
+  const thisMonth = (day: number) =>
+    new Date(now.getFullYear(), now.getMonth(), day).toISOString();
+  const prevMonth = (day: number) =>
+    new Date(lastMonth.getFullYear(), lastMonth.getMonth(), day).toISOString();
+
+  await db.transactions.bulkPut([
     {
       id: crypto.randomUUID(),
       type: 'INCOME',
-      amountCents: 350000,
+      amountCents: 580000,
       currencyCode: 'USD',
       accountId: 'acc-1',
       category: 'Salary',
       description: 'Tech Corp Inc.',
-      occurredAt: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
+      notes: 'Monthly payroll',
+      occurredAt: thisMonth(1),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'INCOME',
+      amountCents: 120000,
+      currencyCode: 'USD',
+      accountId: 'acc-1',
+      category: 'Freelance',
+      description: 'Design project',
+      notes: 'Branding work for client',
+      occurredAt: thisMonth(3),
       createdAt: formattedNow,
       updatedAt: formattedNow,
     },
     {
       id: crypto.randomUUID(),
       type: 'EXPENSE',
-      amountCents: 150000,
+      amountCents: 220000,
       currencyCode: 'USD',
       accountId: 'acc-1',
-      category: 'Housing',
-      description: 'Rent',
-      occurredAt: new Date(now.getFullYear(), now.getMonth(), 2).toISOString(),
+      category: 'Rent',
+      description: 'Apartment rent',
+      occurredAt: thisMonth(2),
       createdAt: formattedNow,
       updatedAt: formattedNow,
     },
     {
       id: crypto.randomUUID(),
       type: 'EXPENSE',
-      amountCents: 12050,
+      amountCents: 18450,
       currencyCode: 'USD',
       accountId: 'acc-1',
-      category: 'Food',
+      category: 'Groceries',
       description: 'Whole Foods Market',
-      occurredAt: new Date(now.getFullYear(), now.getMonth(), 5).toISOString(),
+      occurredAt: thisMonth(5),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'EXPENSE',
+      amountCents: 8900,
+      currencyCode: 'USD',
+      accountId: 'acc-1',
+      category: 'Groceries',
+      description: 'Trader Joe\'s',
+      occurredAt: thisMonth(12),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'EXPENSE',
+      amountCents: 4200,
+      currencyCode: 'USD',
+      accountId: 'acc-2',
+      category: 'Dining',
+      description: 'Pizza with friends',
+      occurredAt: thisMonth(8),
       createdAt: formattedNow,
       updatedAt: formattedNow,
     },
@@ -84,23 +123,94 @@ export async function seedDatabase() {
       accountId: 'acc-1',
       category: 'Subscriptions',
       description: 'Netflix',
-      occurredAt: new Date(now.getFullYear(), now.getMonth(), 10).toISOString(),
+      occurredAt: thisMonth(10),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'EXPENSE',
+      amountCents: 999,
+      currencyCode: 'USD',
+      accountId: 'acc-1',
+      category: 'Subscriptions',
+      description: 'Spotify',
+      occurredAt: thisMonth(10),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'EXPENSE',
+      amountCents: 6500,
+      currencyCode: 'USD',
+      accountId: 'acc-2',
+      category: 'Transportation',
+      description: 'Uber rides',
+      occurredAt: thisMonth(14),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'EXPENSE',
+      amountCents: 3200,
+      currencyCode: 'USD',
+      accountId: 'acc-1',
+      category: 'Health',
+      description: 'Pharmacy',
+      occurredAt: thisMonth(7),
       createdAt: formattedNow,
       updatedAt: formattedNow,
     },
     {
       id: crypto.randomUUID(),
       type: 'INCOME',
-      amountCents: 50000,
+      amountCents: 520000,
+      currencyCode: 'USD',
+      accountId: 'acc-1',
+      category: 'Salary',
+      description: 'Tech Corp Inc.',
+      notes: 'Monthly payroll',
+      occurredAt: prevMonth(1),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'EXPENSE',
+      amountCents: 220000,
+      currencyCode: 'USD',
+      accountId: 'acc-1',
+      category: 'Rent',
+      description: 'Apartment rent',
+      occurredAt: prevMonth(2),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'EXPENSE',
+      amountCents: 21000,
+      currencyCode: 'USD',
+      accountId: 'acc-1',
+      category: 'Groceries',
+      description: 'Weekly groceries',
+      occurredAt: prevMonth(10),
+      createdAt: formattedNow,
+      updatedAt: formattedNow,
+    },
+    {
+      id: crypto.randomUUID(),
+      type: 'INCOME',
+      amountCents: 80000,
       currencyCode: 'BRL',
       accountId: 'acc-3',
-      category: 'Investment',
+      category: 'Investment Return',
       description: 'Dividends',
-      occurredAt: lastMonth.toISOString(),
+      occurredAt: prevMonth(15),
       createdAt: formattedNow,
       updatedAt: formattedNow,
     },
   ]);
-
-  localStorage.setItem('viniverse-seeded', 'true');
 }

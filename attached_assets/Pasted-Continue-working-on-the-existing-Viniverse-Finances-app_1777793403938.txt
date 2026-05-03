@@ -1,0 +1,63 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. Inspect the current codebase first and preserve the current architecture, Dexie database, React/Vite/Tailwind setup, and dark glassmorphism design.
+
+Goal of this phase:
+Turn the current MVP into a more practical personal finance app for real daily use.
+
+Tasks:
+
+1. Improve data safety
+- Make sure seed/sample data is only created on first launch when the database is completely empty.
+- Add a clear warning that all data is local-only and should be exported regularly.
+- Improve the export backup filename to include the current date, for example:
+  viniverse-finances-backup-YYYY-MM-DD.json
+- Improve import validation so invalid JSON does not break the app.
+- When clearing all data, require the user to type DELETE to confirm.
+
+2. Personalize the app
+- Replace generic seed data with a more realistic optional onboarding flow.
+- On first launch, ask the user whether they want to:
+  A) Start empty
+  B) Load sample demo data
+- Do not force sample data if the user wants to start empty.
+
+3. Improve transaction entry
+- Make the add transaction flow faster and more mobile-friendly.
+- Add quick transaction type toggle: Income / Expense.
+- Add category picker with default categories:
+  Income: Salary, Freelance, Refund, Investment Return, Other Income
+  Expenses: Rent, Groceries, Dining, Transportation, Gas, Subscriptions, Phone, Internet, Health, Shopping, Entertainment, Education, Travel, Other Expense
+- Keep the user able to type a custom category.
+- Add optional notes field.
+
+4. Add search and filters
+- Add transaction search by description, category, and notes.
+- Keep existing month and type filters.
+- Make filters easy to clear.
+
+5. Improve dashboard
+- Add an expense category summary for the selected month.
+- Show the top 5 expense categories for that month.
+- Add a simple income vs expenses visual bar section.
+- Do not add heavy chart libraries unless already installed. Use simple CSS/Tailwind bars.
+
+6. Improve account behavior
+- Make account deletion safer:
+  If an account has transactions, warn the user before deleting it.
+- Show account currency clearly.
+- Show account type with a friendly label.
+
+7. UI polish
+- Keep the current dark iOS-like glassmorphism style.
+- Improve spacing on mobile.
+- Make the floating action button not overlap important content.
+- Make bottom navigation feel polished and safe for mobile screens.
+- Keep desktop usable but prioritize mobile.
+
+8. Code quality
+- Keep code modular.
+- Avoid unnecessary new dependencies.
+- Fix any TypeScript or console errors.
+- After changes, run the app and verify that Dashboard, Transactions, Accounts, and More all work.
+
+Deliverable:
+At the end, summarize exactly what was changed, what files were touched, and what should be tested next.
