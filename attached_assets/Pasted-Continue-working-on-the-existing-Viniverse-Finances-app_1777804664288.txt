@@ -1,0 +1,176 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.4.1 — Transfer Insights.
+
+Important direction:
+Do NOT add Transfers to the bottom navigation.
+Do NOT add CSV export, PDF export, cloud sync, biometric auth, bank integrations, external APIs, or AI APIs in this phase.
+Do NOT change the database schema.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, cashflow calendar, quick templates, transfers, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Add a Transfer Insights section to the Monthly Reports page so the user can understand money moved between accounts, especially USD to BRL transfers for investing, without counting transfers as income or expenses.
+
+Important financial rule:
+Transfers are not income.
+Transfers are not expenses.
+Transfer Insights must stay separate from spending, income, budgets, savings rate, and cashflow calculations.
+
+1. Radix Select safety audit
+Before working on reports, scan the codebase for all Radix SelectItem usage.
+
+Fix any SelectItem with:
+- value=""
+- undefined value
+- null value
+- potentially empty dynamic value
+
+Use safe sentinel values like:
+- "__none__"
+- "__custom__"
+- "__all__"
+
+Map sentinel values back to the app's internal state where needed.
+
+Do not change business logic.
+
+2. Monthly Reports integration
+On the Monthly Reports page, add a separate section called:
+
+“Transfer Insights”
+
+This section should appear below the main income/expense summary and clearly state:
+“Transfers are excluded from income, expenses, budgets, and savings rate.”
+
+3. Transfer monthly summary
+For the selected month, show:
+
+- number of transfers
+- total moved out by currency
+- total received by currency
+- total fees by currency
+- number of cross-currency transfers
+- average exchange rate for USD → BRL transfers, if any
+- average exchange rate for BRL → USD transfers, if any
+
+Keep USD and BRL separate.
+Do not mix currencies unless clearly labeled as exchange-rate information.
+
+4. Account flow breakdown
+Show a compact account flow table/list:
+
+For each account involved in transfers during the selected month:
+- account name
+- currency
+- total transferred out
+- total transferred in
+- net transfer effect
+- fee total if applicable
+
+Use existing account names.
+If an account was deleted or missing, show:
+“Unknown account”
+
+Do not crash.
+
+5. Cross-currency section
+If there are cross-currency transfers, show a subsection:
+
+“Currency Moves”
+
+For each cross-currency transfer:
+- date
+- from account → to account
+- from amount
+- to amount
+- exchange rate
+- fee if any
+- description if present
+
+This is especially important for:
+- US Checking → Brazil Investments
+- Cash/Checking USD → BRL investment accounts
+
+6. Same-currency transfer section
+If there are same-currency transfers, show a compact subsection:
+
+“Account Moves”
+
+Examples:
+- Cash Wallet → US Checking
+- US Checking → Cash Wallet
+
+Show:
+- date
+- from account → to account
+- amount
+- fee if any
+- description if present
+
+7. Empty state
+If no transfers exist for the selected month, show:
+
+“No transfers recorded this month.”
+
+Add CTA:
+“Add Transfer”
+This should navigate to /transfers.
+
+8. Dashboard consistency
+Do not change the Dashboard unless absolutely necessary.
+
+If you touch Dashboard:
+- preserve the existing Transfer quick action
+- preserve Recent Transfers
+- do not add a bottom nav item
+
+9. Data safety
+Handle safely:
+- no transfers
+- deleted/missing accounts
+- invalid dates
+- invalid exchange rates
+- missing currency codes
+- transfer fees
+- same-currency transfers
+- cross-currency transfers
+- empty selected month
+- old backups with no transfers
+
+10. UI polish
+Keep the dark iOS-like glassmorphism style.
+Use neutral/indigo styling for transfers.
+Do not use red/green in a way that makes transfers look like expenses/income.
+Make the section compact and readable on iPhone.
+
+11. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- Quick Templates page no longer crashes.
+- No SelectItem value="" errors remain.
+- Monthly Reports loads normally.
+- Reports income/expense totals are unchanged by transfers.
+- Savings rate is unchanged by transfers.
+- Budgets are unchanged by transfers.
+- Transfer Insights appears when transfers exist in selected month.
+- Empty state appears when no transfers exist.
+- Same-currency transfers appear in Account Moves.
+- USD → BRL transfers appear in Currency Moves.
+- Fees are shown separately.
+- Deleted/missing account references do not crash the report.
+- Add Transfer CTA opens /transfers.
+- Existing pages still work:
+  Dashboard, Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, Calendar, Quick Templates, Transfers, Setup, More, PIN Lock, PWA, Backup/Import/Export.
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files updated
+- files created, if any
+- whether database schema changed
+- SelectItem safety fixes
+- Transfer Insights behavior
+- what I should test manually next

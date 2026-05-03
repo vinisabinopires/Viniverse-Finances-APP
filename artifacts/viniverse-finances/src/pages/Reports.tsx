@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { MonthSelector } from "@/components/MonthSelector";
 import {
   useLiveTransactions, useLiveBudgets, useLiveRecurringRules,
-  useLiveGoals, useLiveSnapshots,
+  useLiveGoals, useLiveSnapshots, useLiveTransfers, useLiveAccounts,
   calcBudgetSpent, getWeekStartDate, getWeekEndDate, toDateStr,
   getOccurrenceDatesForRange,
 } from "@/hooks/use-finance";
@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import {
   TrendingUp, Target, RefreshCw, Lightbulb, ChevronRight,
   ArrowDownRight, ArrowUpRight, CalendarDays, BarChart2,
+  ArrowLeftRight, ArrowRight, Plus,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 
@@ -55,6 +56,8 @@ export default function Reports() {
   const recurringRules = useLiveRecurringRules();
   const goals          = useLiveGoals();
   const snapshots      = useLiveSnapshots();
+  const transfers      = useLiveTransfers();
+  const accounts       = useLiveAccounts();
 
   // ─── Month bounds ─────────────────────────────────────────────────────────
   const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
@@ -180,6 +183,65 @@ export default function Reports() {
     }
   }
   const shownInsights = insights.slice(0, 6);
+
+  // ─── Transfer Insights ────────────────────────────────────────────────────
+  const monthTransfers = transfers.filter((t) => t.date.startsWith(currentMonth));
+  const crossTransfers = monthTransfers.filter((t) => t.fromCurrencyCode !== t.toCurrencyCode);
+  const sameTransfers  = monthTransfers.filter((t) => t.fromCurrencyCode === t.toCurrencyCode);
+
+  // Totals moved and fees by currency
+  const movedByCcy: Record<string, number> = {};
+  const feesByCcy:  Record<string, number> = {};
+  for (const t of monthTransfers) {
+    movedByCcy[t.fromCurrencyCode] = (movedByCcy[t.fromCurrencyCode] ?? 0) + t.fromAmountCents;
+    if (t.feeAmountCents && t.feeCurrencyCode) {
+      feesByCcy[t.feeCurrencyCode] = (feesByCcy[t.feeCurrencyCode] ?? 0) + t.feeAmountCents;
+    }
+  }
+
+  // Average exchange rates
+  const usdToBrlTx   = crossTransfers.filter((t) => t.fromCurrencyCode === "USD" && t.toCurrencyCode === "BRL" && t.exchangeRate);
+  const avgUsdToBrl  = usdToBrlTx.length > 0 ? usdToBrlTx.reduce((s, t) => s + (t.exchangeRate ?? 0), 0) / usdToBrlTx.length : null;
+  const brlToUsdTx   = crossTransfers.filter((t) => t.fromCurrencyCode === "BRL" && t.toCurrencyCode === "USD" && t.exchangeRate);
+  const avgBrlToUsd  = brlToUsdTx.length > 0 ? brlToUsdTx.reduce((s, t) => s + (t.exchangeRate ?? 0), 0) / brlToUsdTx.length : null;
+
+  // Account flow map
+  type AccFlow = { id: string; name: string; currencyCode: "USD" | "BRL"; outCents: number; inCents: number; feesCents: number };
+  const flowMap = new Map<string, AccFlow>();
+  for (const t of monthTransfers) {
+    const fromAcct = accounts.find((a) => a.id === t.fromAccountId);
+    const toAcct   = accounts.find((a) => a.id === t.toAccountId);
+    if (!flowMap.has(t.fromAccountId)) {
+      flowMap.set(t.fromAccountId, {
+        id: t.fromAccountId,
+        name: fromAcct?.name ?? "Unknown account",
+        currencyCode: (fromAcct?.currencyCode ?? t.fromCurrencyCode) as "USD" | "BRL",
+        outCents: 0, inCents: 0, feesCents: 0,
+      });
+    }
+    const ff = flowMap.get(t.fromAccountId)!;
+    ff.outCents += t.fromAmountCents;
+    if (t.feeAmountCents && t.feeCurrencyCode === ff.currencyCode) ff.feesCents += t.feeAmountCents;
+
+    if (!flowMap.has(t.toAccountId)) {
+      flowMap.set(t.toAccountId, {
+        id: t.toAccountId,
+        name: toAcct?.name ?? "Unknown account",
+        currencyCode: (toAcct?.currencyCode ?? t.toCurrencyCode) as "USD" | "BRL",
+        outCents: 0, inCents: 0, feesCents: 0,
+      });
+    }
+    flowMap.get(t.toAccountId)!.inCents += t.toAmountCents;
+  }
+  const accountFlows = Array.from(flowMap.values());
+
+  // Timezone-safe date formatter for YYYY-MM-DD strings
+  const fmtTxDate = (d: string) => {
+    const [y, m, day] = d.split("-").map(Number);
+    return new Date(y, m - 1, day).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const accName = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Unknown account";
 
   // ─── Budget status helpers ─────────────────────────────────────────────────
   const budgetStatusCls = (pct: number) =>
@@ -520,8 +582,184 @@ export default function Reports() {
           )}
         </motion.div>
 
+        {/* ── Transfer Insights ── */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.19 }} className="glass-card p-5 rounded-2xl border border-indigo-500/15">
+          <div className="flex items-center gap-2 mb-1">
+            <ArrowLeftRight className="w-4 h-4 text-indigo-400" />
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Transfer Insights</h3>
+          </div>
+          <p className="text-[11px] text-muted-foreground/60 mb-4 leading-relaxed">
+            Transfers are excluded from income, expenses, budgets, and savings rate.
+          </p>
+
+          {monthTransfers.length === 0 ? (
+            <div className="py-8 text-center">
+              <ArrowLeftRight className="w-8 h-8 text-indigo-400/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground font-medium">No transfers recorded this month.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1 max-w-[220px] mx-auto leading-relaxed">
+                Use transfers to move money between accounts without affecting income or expenses.
+              </p>
+              <Link href="/transfers">
+                <button className="mt-4 flex items-center gap-1.5 mx-auto text-xs font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors px-3 py-2 rounded-xl">
+                  <Plus className="w-3.5 h-3.5" /> Add Transfer
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-5">
+
+              {/* Summary stats */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="glass-card p-3 rounded-xl text-center">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">Total transfers</p>
+                  <p className="text-2xl font-bold">{monthTransfers.length}</p>
+                </div>
+                <div className="glass-card p-3 rounded-xl text-center">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">Cross-currency</p>
+                  <p className="text-2xl font-bold text-indigo-400">{crossTransfers.length}</p>
+                </div>
+              </div>
+
+              {/* Totals moved + fees + avg rates */}
+              <div className="glass-card p-3 rounded-xl space-y-2">
+                {Object.entries(movedByCcy).map(([ccy, cents]) => (
+                  <div key={`moved-${ccy}`} className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Moved ({ccy})</span>
+                    <span className="font-semibold tabular-nums text-indigo-300">{formatMoney(cents, ccy as "USD" | "BRL")}</span>
+                  </div>
+                ))}
+                {Object.entries(feesByCcy).map(([ccy, cents]) => (
+                  <div key={`fee-${ccy}`} className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Fees ({ccy})</span>
+                    <span className="font-semibold tabular-nums text-amber-400/80">{formatMoney(cents, ccy as "USD" | "BRL")}</span>
+                  </div>
+                ))}
+                {avgUsdToBrl !== null && (
+                  <div className="flex justify-between items-center text-sm border-t border-white/5 pt-2 mt-1">
+                    <span className="text-muted-foreground">Avg rate USD → BRL</span>
+                    <span className="font-semibold tabular-nums">{avgUsdToBrl.toFixed(4)}</span>
+                  </div>
+                )}
+                {avgBrlToUsd !== null && (
+                  <div className="flex justify-between items-center text-sm border-t border-white/5 pt-2 mt-1">
+                    <span className="text-muted-foreground">Avg rate BRL → USD</span>
+                    <span className="font-semibold tabular-nums">{avgBrlToUsd.toFixed(6)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Account flow */}
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Account Flow</p>
+                <div className="space-y-2">
+                  {accountFlows.map((flow) => {
+                    const net = flow.inCents - flow.outCents;
+                    return (
+                      <div key={flow.id} className="glass-card p-3 rounded-xl">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium truncate">{flow.name}</p>
+                          <span className="text-[10px] text-muted-foreground ml-2 flex-shrink-0 bg-white/5 px-1.5 py-0.5 rounded-full">{flow.currencyCode}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1 text-xs text-center">
+                          <div>
+                            <p className="text-muted-foreground/70 mb-0.5">Sent</p>
+                            <p className="font-semibold tabular-nums text-slate-300">{flow.outCents > 0 ? formatMoney(flow.outCents, flow.currencyCode) : "—"}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground/70 mb-0.5">Received</p>
+                            <p className="font-semibold tabular-nums text-indigo-300">{flow.inCents > 0 ? formatMoney(flow.inCents, flow.currencyCode) : "—"}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground/70 mb-0.5">Net</p>
+                            <p className={`font-semibold tabular-nums ${net >= 0 ? "text-indigo-400" : "text-slate-400"}`}>
+                              {net >= 0 ? "+" : ""}{formatMoney(net, flow.currencyCode)}
+                            </p>
+                          </div>
+                        </div>
+                        {flow.feesCents > 0 && (
+                          <p className="text-[10px] text-amber-400/70 mt-1.5 text-right">
+                            Fee: {formatMoney(flow.feesCents, flow.currencyCode)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Currency Moves (cross-currency) */}
+              {crossTransfers.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Currency Moves</p>
+                  <div className="space-y-2">
+                    {crossTransfers.map((t) => (
+                      <div key={t.id} className="glass-card p-3 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">{fmtTxDate(t.date)}</span>
+                          {t.description && (
+                            <span className="text-[10px] text-muted-foreground truncate ml-2 max-w-[120px]">{t.description}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-medium truncate max-w-[100px]">{accName(t.fromAccountId)}</span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground/60 flex-shrink-0" />
+                          <span className="text-xs font-medium truncate max-w-[100px]">{accName(t.toAccountId)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-indigo-300 tabular-nums">{formatMoney(t.fromAmountCents, t.fromCurrencyCode)}</span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground/40 flex-shrink-0" />
+                          <span className="text-sm font-bold text-indigo-400 tabular-nums">{formatMoney(t.toAmountCents, t.toCurrencyCode)}</span>
+                          {t.exchangeRate && (
+                            <span className="text-[10px] text-muted-foreground bg-white/5 px-1.5 py-0.5 rounded-full">@ {t.exchangeRate}</span>
+                          )}
+                        </div>
+                        {t.feeAmountCents && (
+                          <p className="text-[10px] text-amber-400/70">
+                            Fee: {formatMoney(t.feeAmountCents, (t.feeCurrencyCode ?? t.fromCurrencyCode) as "USD" | "BRL")}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Account Moves (same-currency) */}
+              {sameTransfers.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Account Moves</p>
+                  <div className="space-y-2">
+                    {sameTransfers.map((t) => (
+                      <div key={t.id} className="glass-card p-3 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">{fmtTxDate(t.date)}</span>
+                          {t.description && (
+                            <span className="text-[10px] text-muted-foreground truncate ml-2 max-w-[140px]">{t.description}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-medium truncate max-w-[100px]">{accName(t.fromAccountId)}</span>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground/60 flex-shrink-0" />
+                          <span className="text-xs font-medium truncate max-w-[100px]">{accName(t.toAccountId)}</span>
+                        </div>
+                        <p className="text-sm font-bold text-indigo-300 tabular-nums">{formatMoney(t.fromAmountCents, t.fromCurrencyCode)}</p>
+                        {t.feeAmountCents && (
+                          <p className="text-[10px] text-amber-400/70">
+                            Fee: {formatMoney(t.feeAmountCents, (t.feeCurrencyCode ?? t.fromCurrencyCode) as "USD" | "BRL")}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+        </motion.div>
+
         {/* ── Insights ── */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.19 }} className="glass-card p-5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.21 }} className="glass-card p-5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
           <SectionHeader icon={<Lightbulb className="w-4 h-4 text-indigo-400" />} title="Insights" />
           <div className="space-y-3">
             {shownInsights.map((insight, i) => (
