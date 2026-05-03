@@ -1,0 +1,162 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. This phase adds a lightweight local privacy lock, not full encryption.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, backup/import/export, and all current app behavior.
+
+Goal of this phase:
+Add a local PIN privacy lock so the app can be protected from casual access when someone else opens the browser or device.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, or external services.
+- Do not encrypt IndexedDB in this phase.
+- Do not change the database schema unless absolutely necessary.
+- Avoid new dependencies.
+- Preserve all existing data.
+- Do not break backup/import/export.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+Important security note:
+This is a local privacy lock only. It protects against casual access, not against advanced users inspecting browser storage or developer tools.
+
+1. Local PIN settings
+Create local app settings using localStorage.
+
+Settings fields:
+- viniverse_pin_enabled: boolean
+- viniverse_pin_hash: string
+- viniverse_pin_salt: string
+- viniverse_lock_timeout_minutes: number
+- viniverse_last_unlocked_at: ISO string
+- viniverse_privacy_lock_version: string
+
+Use Web Crypto API if available to hash the PIN with SHA-256 plus salt.
+Do not store the raw PIN.
+Fallback gracefully if Web Crypto is unavailable.
+
+2. Lock screen
+Create a LockScreen component.
+
+Behavior:
+- If PIN lock is enabled and the app is locked, show a full-screen lock screen before showing financial data.
+- The lock screen should match the Viniverse dark glassmorphism style.
+- Show app name:
+  Viniverse – Finances
+- Show a 4-digit PIN input.
+- Use mobile-friendly numeric input.
+- Add Unlock button.
+- Show error message for wrong PIN.
+- Do not reveal whether the hash exists or other technical details.
+- After successful unlock:
+  - store last unlocked timestamp
+  - show app normally
+
+3. Setup PIN flow
+In More/Settings, add a Privacy & Security section.
+
+Include:
+- Enable PIN Lock
+- Change PIN
+- Disable PIN Lock
+- Auto-lock timeout selector:
+  - Immediately
+  - 1 minute
+  - 5 minutes
+  - 15 minutes
+  - 30 minutes
+
+Setup flow:
+- Ask for new 4-digit PIN
+- Ask to confirm PIN
+- Validate both match
+- Save hash + salt
+- Enable PIN lock
+- Show success feedback
+
+Change PIN flow:
+- Require current PIN first
+- Then new PIN and confirmation
+- Save new hash + salt
+
+Disable PIN flow:
+- Require current PIN
+- Then disable PIN lock and remove stored hash/salt
+
+4. Lock behavior
+The app should lock:
+- on initial load if PIN lock is enabled and timeout has expired
+- when the user taps a new “Lock App” button in More/Settings
+- when the browser/tab becomes hidden and timeout is set to Immediately
+- when the app regains focus and timeout has expired
+
+Timeout logic:
+- If timeout is Immediately, lock whenever the app becomes hidden and returns.
+- Otherwise, compare current time with viniverse_last_unlocked_at.
+- If elapsed minutes exceed timeout, lock.
+
+5. Privacy mode while locked
+When locked:
+- Do not render the main app content behind the lock screen if possible.
+- Avoid showing financial amounts, transactions, reports, or account data behind overlays.
+- The lock screen should be the only visible UI.
+
+6. More/Settings UI updates
+Add a polished Privacy & Security card.
+
+Show:
+- PIN Lock status: Enabled or Disabled
+- Auto-lock timeout
+- Buttons:
+  - Set Up PIN / Change PIN
+  - Lock App now
+  - Disable PIN Lock, if enabled
+
+Also add a small disclaimer:
+“PIN Lock protects casual access on this device. It does not encrypt your local database.”
+
+Keep the text short and elegant.
+
+7. Data safety
+- Do not clear any financial data when enabling/disabling PIN.
+- Do not include PIN hash/salt in export backups.
+- Do not import PIN settings from backup.
+- Backup should remain financial data only.
+- Clear All Data should not necessarily clear PIN settings unless there is already app reset logic.
+- If Clear All Data currently clears everything financial, keep PIN settings untouched unless user explicitly disables PIN.
+
+8. UX polish
+- Keep the iOS-like dark glassmorphism style.
+- Make the PIN setup modal/drawer comfortable on mobile.
+- Use large touch-friendly buttons.
+- Use clear error and success feedback.
+- Avoid clutter.
+- Make wrong PIN feedback subtle but clear.
+
+9. Testing
+Run TypeScript checks and fix all errors.
+Check console logs and fix runtime errors.
+
+Manually verify:
+- App still loads normally when PIN lock is disabled.
+- More → Privacy & Security appears.
+- Set up a 4-digit PIN.
+- Lock App now hides all financial data.
+- Correct PIN unlocks.
+- Wrong PIN shows error.
+- Refresh page while PIN is enabled and timeout expired → lock screen appears.
+- Change PIN requires current PIN.
+- Disable PIN requires current PIN.
+- Timeout selector saves.
+- Immediately timeout locks after hiding/showing tab.
+- Backup export does not include PIN hash or salt.
+- Import backup does not change PIN settings.
+- Existing Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, Dashboard, More, Export, Import, and Clear All Data still work.
+
+Deliverable:
+At the end, summarize:
+- files created
+- files updated
+- whether database schema changed
+- PIN/security behavior added
+- privacy limitations
+- what I should test manually next

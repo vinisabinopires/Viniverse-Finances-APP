@@ -2,8 +2,10 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Onboarding } from "@/components/Onboarding";
+import { LockScreen } from "@/components/LockScreen";
+import { isPinEnabled, isTimeoutExpired, setLastUnlocked, getTimeoutMinutes } from "@/lib/pin-security";
 
 import Dashboard from "@/pages/Dashboard";
 import Transactions from "@/pages/Transactions";
@@ -43,7 +45,51 @@ function App() {
     return !!localStorage.getItem('viniverse-onboarded');
   });
 
+  const [locked, setLocked] = useState(() => {
+    return isPinEnabled() && isTimeoutExpired();
+  });
+
+  const hiddenAtRef = useRef<number | null>(null);
+
+  // Listen for manual lock event (dispatched from More/Settings)
+  useEffect(() => {
+    const handler = () => {
+      if (isPinEnabled()) setLocked(true);
+    };
+    window.addEventListener("viniverse:lock", handler);
+    return () => window.removeEventListener("viniverse:lock", handler);
+  }, []);
+
+  // Lock on visibility change (tab hide/show)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+      } else if (document.visibilityState === "visible") {
+        if (!isPinEnabled()) return;
+        const timeout = getTimeoutMinutes();
+        if (timeout === 0) {
+          // "Immediately" — always lock when returning
+          if (hiddenAtRef.current !== null) setLocked(true);
+        } else if (isTimeoutExpired()) {
+          setLocked(true);
+        }
+        hiddenAtRef.current = null;
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  const handleUnlock = () => {
+    setLastUnlocked();
+    setLocked(false);
+  };
+
   if (!onboarded) return <Onboarding onComplete={() => setOnboarded(true)} />;
+
+  // Show lock screen — do NOT render app behind it so financial data is hidden
+  if (locked) return <LockScreen onUnlock={handleUnlock} />;
 
   return (
     <QueryClientProvider client={queryClient}>

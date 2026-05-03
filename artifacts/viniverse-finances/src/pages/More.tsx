@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,21 @@ import { clearAllData, db } from "@/hooks/use-finance";
 import {
   Download, Upload, Trash2, Info, Shield, AlertTriangle,
   RefreshCw, Target, TrendingUp, BarChart2, ChevronRight, FileBarChart2,
+  Lock, LockOpen, ShieldCheck, Timer,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PinSetupDrawer, type PinSetupMode } from "@/components/PinSetupDrawer";
+import {
+  isPinEnabled, getTimeoutMinutes, setTimeoutMinutes, dispatchLockEvent,
+} from "@/lib/pin-security";
+
+const TIMEOUT_OPTIONS: { label: string; value: number }[] = [
+  { label: "Immediately", value: 0 },
+  { label: "1 min",       value: 1 },
+  { label: "5 min",       value: 5 },
+  { label: "15 min",      value: 15 },
+  { label: "30 min",      value: 30 },
+];
 
 export default function More() {
   const { toast } = useToast();
@@ -16,16 +29,32 @@ export default function More() {
   const [deleteInputValue, setDeleteInputValue] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleClearData = async () => {
-    if (deleteInputValue !== "DELETE") return;
-    await clearAllData();
-    localStorage.removeItem('viniverse-onboarded');
-    setShowDeleteConfirm(false);
-    setDeleteInputValue("");
-    toast({ title: "Data cleared", description: "All data deleted. Reloading…" });
-    setTimeout(() => { window.location.reload(); }, 1200);
+  // ── PIN state (read from localStorage) ───────────────────────────────────
+  const [pinEnabled, setPinEnabled] = useState(() => isPinEnabled());
+  const [timeoutMins, setTimeoutMins] = useState(() => getTimeoutMinutes());
+  const [pinDrawerOpen, setPinDrawerOpen] = useState(false);
+  const [pinDrawerMode, setPinDrawerMode] = useState<PinSetupMode>("setup");
+
+  const refreshPinState = useCallback(() => {
+    setPinEnabled(isPinEnabled());
+    setTimeoutMins(getTimeoutMinutes());
+  }, []);
+
+  const openPinDrawer = (mode: PinSetupMode) => {
+    setPinDrawerMode(mode);
+    setPinDrawerOpen(true);
   };
 
+  const handleTimeoutChange = (value: number) => {
+    setTimeoutMinutes(value);
+    setTimeoutMins(value);
+  };
+
+  const handleLockNow = () => {
+    dispatchLockEvent();
+  };
+
+  // ── Export ────────────────────────────────────────────────────────────────
   const handleExport = async () => {
     try {
       const [accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots, weeklyPlans] = await Promise.all([
@@ -33,6 +62,7 @@ export default function More() {
         db.recurringRules.toArray(), db.financialGoals.toArray(),
         db.netWorthSnapshots.toArray(), db.weeklyPlans.toArray(),
       ]);
+      // NOTE: PIN hash/salt is intentionally excluded from export
       const data = { accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots, weeklyPlans, exportedAt: new Date().toISOString(), version: 6 };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url  = URL.createObjectURL(blob);
@@ -46,6 +76,7 @@ export default function More() {
     } catch { toast({ title: "Export failed", variant: "destructive" }); }
   };
 
+  // ── Import ────────────────────────────────────────────────────────────────
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -73,6 +104,7 @@ export default function More() {
       if (financialGoals.length)    await db.financialGoals.bulkAdd(financialGoals as Parameters<typeof db.financialGoals.bulkAdd>[0]);
       if (netWorthSnapshots.length) await db.netWorthSnapshots.bulkAdd(netWorthSnapshots as Parameters<typeof db.netWorthSnapshots.bulkAdd>[0]);
       if (weeklyPlans.length)       await db.weeklyPlans.bulkAdd(weeklyPlans       as Parameters<typeof db.weeklyPlans.bulkAdd>[0]);
+      // NOTE: PIN settings are intentionally NOT imported — they stay as-is
       localStorage.setItem('viniverse-onboarded', 'true');
       toast({
         title: "Import successful",
@@ -80,6 +112,18 @@ export default function More() {
       });
       setTimeout(() => { window.location.reload(); }, 1200);
     } catch { toast({ title: "Import failed", description: "Something went wrong while restoring your data.", variant: "destructive" }); }
+  };
+
+  // ── Clear all ─────────────────────────────────────────────────────────────
+  const handleClearData = async () => {
+    if (deleteInputValue !== "DELETE") return;
+    await clearAllData();
+    localStorage.removeItem('viniverse-onboarded');
+    // PIN settings are intentionally preserved through data clear
+    setShowDeleteConfirm(false);
+    setDeleteInputValue("");
+    toast({ title: "Data cleared", description: "All data deleted. Reloading…" });
+    setTimeout(() => { window.location.reload(); }, 1200);
   };
 
   return (
@@ -122,6 +166,106 @@ export default function More() {
               </Link>
             ))}
           </div>
+        </div>
+
+        {/* ── Privacy & Security ───────────────────────────────────────────── */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium text-muted-foreground px-1 uppercase tracking-wide">Privacy &amp; Security</h3>
+
+          {/* Status card */}
+          <div className="glass-card rounded-2xl border border-white/10 p-4 space-y-4">
+            {/* PIN status row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${pinEnabled ? "bg-emerald-500/15" : "bg-white/5"}`}>
+                  {pinEnabled
+                    ? <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    : <Shield className="w-4 h-4 text-muted-foreground" />
+                  }
+                </div>
+                <div>
+                  <p className="text-sm font-medium">PIN Lock</p>
+                  <p className="text-xs text-muted-foreground">
+                    {pinEnabled ? "Enabled — app is protected" : "Disabled — anyone can open this app"}
+                  </p>
+                </div>
+              </div>
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                pinEnabled
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                  : "bg-white/5 text-muted-foreground border-white/10"
+              }`}>
+                {pinEnabled ? "On" : "Off"}
+              </span>
+            </div>
+
+            {/* Auto-lock timeout (only shown when PIN is enabled) */}
+            {pinEnabled && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Timer className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Auto-lock after</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {TIMEOUT_OPTIONS.map(({ label, value }) => (
+                    <button
+                      key={value}
+                      onClick={() => handleTimeoutChange(value)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        timeoutMins === value
+                          ? "bg-primary/20 text-primary border-primary/30"
+                          : "bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10 hover:text-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="space-y-2">
+              {!pinEnabled ? (
+                <button
+                  onClick={() => openPinDrawer("setup")}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/15 transition-colors"
+                >
+                  <Lock className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-sm font-medium text-primary">Set Up PIN Lock</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => openPinDrawer("change")}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                  >
+                    <LockOpen className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm font-medium">Change PIN</span>
+                  </button>
+                  <button
+                    onClick={handleLockNow}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/15 transition-colors"
+                  >
+                    <Lock className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                    <span className="text-sm font-medium text-indigo-400">Lock App Now</span>
+                  </button>
+                  <button
+                    onClick={() => openPinDrawer("disable")}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-rose-500/5 border border-rose-500/15 hover:bg-rose-500/10 transition-colors"
+                  >
+                    <Shield className="w-4 h-4 text-rose-400/70 flex-shrink-0" />
+                    <span className="text-sm font-medium text-rose-400/80">Disable PIN Lock</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <p className="text-[11px] text-muted-foreground/60 px-1 leading-relaxed">
+            PIN Lock protects casual access on this device. It does not encrypt your local database.
+          </p>
         </div>
 
         {/* Warning */}
@@ -173,6 +317,14 @@ export default function More() {
           </div>
         )}
       </div>
+
+      {/* PIN Setup Drawer */}
+      <PinSetupDrawer
+        open={pinDrawerOpen}
+        mode={pinDrawerMode}
+        onClose={() => setPinDrawerOpen(false)}
+        onSuccess={refreshPinState}
+      />
     </Layout>
   );
 }
