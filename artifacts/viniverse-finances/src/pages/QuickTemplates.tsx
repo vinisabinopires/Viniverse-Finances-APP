@@ -209,12 +209,15 @@ function TemplateFormDrawer({
                 <label className="text-sm font-medium">
                   Account <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
-                <Select value={accountId} onValueChange={setAccountId}>
+                <Select
+                  value={accountId || "__none__"}
+                  onValueChange={(v) => setAccountId(v === "__none__" ? "" : v)}
+                >
                   <SelectTrigger className="bg-white/5 border-white/10">
                     <SelectValue placeholder="User picks account" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-white/10">
-                    <SelectItem value="">User picks account</SelectItem>
+                    <SelectItem value="__none__">User picks account</SelectItem>
                     {accounts.map((a) => (
                       <SelectItem key={a.id} value={a.id}>{a.name} ({a.currencyCode})</SelectItem>
                     ))}
