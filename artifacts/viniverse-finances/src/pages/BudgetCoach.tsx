@@ -4,7 +4,8 @@ import { Layout } from "@/components/Layout";
 import { MonthSelector } from "@/components/MonthSelector";
 import {
   useLiveTransactions, useLiveBudgets, useLiveRecurringRules, useLiveAccounts,
-  calcBudgetSpent, getOccurrenceDatesForRange, toDateStr,
+  useLiveTransfers, useLiveGoals,
+  calcBudgetSpent, calcAccountBalance, getOccurrenceDatesForRange, toDateStr,
 } from "@/hooks/use-finance";
 import { formatMoney, formatMonthYear } from "@/utils";
 import { motion } from "framer-motion";
@@ -45,6 +46,15 @@ const pressureMeta = {
   unknown:     { label: "—",           color: "text-muted-foreground", bg: "bg-white/5", border: "border-white/10",   bar: "bg-white/20" },
 } as const;
 
+const resilienceMeta = {
+  critical: { label: "Critical", color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20",    bar: "bg-rose-500" },
+  fragile:  { label: "Fragile",  color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   bar: "bg-amber-400" },
+  building: { label: "Building", color: "text-indigo-400",  bg: "bg-indigo-500/10",  border: "border-indigo-500/20",  bar: "bg-indigo-400" },
+  strong:   { label: "Strong",   color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", bar: "bg-emerald-500" },
+  fortress: { label: "Fortress", color: "text-purple-400",  bg: "bg-purple-500/10",  border: "border-purple-500/20",  bar: "bg-purple-400" },
+  unknown:  { label: "—",        color: "text-muted-foreground", bg: "bg-white/5",   border: "border-white/10",       bar: "bg-white/20" },
+} as const;
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function BudgetCoach() {
@@ -55,6 +65,8 @@ export default function BudgetCoach() {
   const budgets      = useLiveBudgets();
   const rules        = useLiveRecurringRules();
   const accounts     = useLiveAccounts();
+  const transfers    = useLiveTransfers();
+  const goals        = useLiveGoals();
 
   // ── Date math ───────────────────────────────────────────────────────────
   const today = new Date();
@@ -145,6 +157,81 @@ export default function BudgetCoach() {
     else                              pressureLevel = "comfortable";
   }
   const pm = pressureMeta[pressureLevel];
+
+  // ── Savings Runway ───────────────────────────────────────────────────────
+  const currAccounts   = accounts.filter((a) => a.currencyCode === currency);
+  const liquidAccts    = currAccounts.filter((a) => a.type === "CHECKING" || a.type === "SAVINGS" || a.type === "CASH");
+  const liquidBalCents = liquidAccts.reduce((s, a) => s + calcAccountBalance(a, transactions, transfers), 0);
+  const totalBalCents  = currAccounts.reduce((s, a) => s + calcAccountBalance(a, transactions, transfers), 0);
+
+  // Baseline A: fixed commitments (already computed)
+  const fixedBaselineCents = fixedExpMonthlyCents;
+
+  // Baseline B: average actual expenses — last 3 completed months
+  const last3Months: string[] = [];
+  for (let i = 3; i >= 1; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    last3Months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  const monthlySpends = last3Months
+    .map((m) =>
+      transactions
+        .filter((t) => {
+          const d = new Date(t.occurredAt);
+          return t.type === "EXPENSE" && t.currencyCode === currency &&
+                 `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` === m;
+        })
+        .reduce((s, t) => s + t.amountCents, 0)
+    )
+    .filter((v) => v > 0);
+  const hasActualHistory       = monthlySpends.length >= 2;
+  const avgActualBaselineCents = monthlySpends.length >= 1
+    ? Math.round(monthlySpends.reduce((s, v) => s + v, 0) / monthlySpends.length)
+    : 0;
+
+  // Baseline C: budgeted spending (selected month + currency)
+  const budgetedBaselineCents = monthBudgets.reduce((s, b) => s + b.monthlyLimitCents, 0);
+
+  // Runway helpers
+  const calcRunwayMonths = (balance: number, baseline: number): number | null =>
+    baseline > 0 && balance > 0 ? balance / baseline : null;
+  const fmtRunway = (m: number | null): string => {
+    if (m === null) return "—";
+    if (m >= 12) return "12+ mo";
+    if (m >= 6)  return "6+ mo";
+    return `${m.toFixed(1)} mo`;
+  };
+  const liquidRunwayFixed  = calcRunwayMonths(liquidBalCents, fixedBaselineCents);
+  const totalRunwayFixed   = calcRunwayMonths(totalBalCents,  fixedBaselineCents);
+  const liquidRunwayActual = calcRunwayMonths(liquidBalCents, avgActualBaselineCents);
+  const totalRunwayActual  = calcRunwayMonths(totalBalCents,  avgActualBaselineCents);
+  const liquidRunwayBudget = calcRunwayMonths(liquidBalCents, budgetedBaselineCents);
+  const totalRunwayBudget  = calcRunwayMonths(totalBalCents,  budgetedBaselineCents);
+
+  // Resilience level
+  type ResilienceLevel = "critical" | "fragile" | "building" | "strong" | "fortress" | "unknown";
+  let resilienceLevel: ResilienceLevel = "unknown";
+  if (liquidRunwayFixed !== null) {
+    if      (liquidRunwayFixed < 1)  resilienceLevel = "critical";
+    else if (liquidRunwayFixed < 3)  resilienceLevel = "fragile";
+    else if (liquidRunwayFixed < 6)  resilienceLevel = "building";
+    else if (liquidRunwayFixed < 12) resilienceLevel = "strong";
+    else                             resilienceLevel = "fortress";
+  }
+  const rm = resilienceMeta[resilienceLevel];
+
+  // Emergency fund targets
+  const emgBaseline = fixedBaselineCents > 0 ? fixedBaselineCents : budgetedBaselineCents;
+  const emgTargets = emgBaseline > 0
+    ? ([1, 3, 6, 12] as const).map((mos) => {
+        const target   = Math.round(emgBaseline * mos);
+        const progress = target > 0 ? Math.min(liquidBalCents / target, 1) : 0;
+        return { mos, target, progress, gap: Math.max(target - liquidBalCents, 0) };
+      })
+    : [];
+
+  // Emergency Fund goal link
+  const emergencyGoal = goals.find((g) => g.goalType === "EMERGENCY_FUND" && g.currencyCode === currency && !g.isArchived);
 
   // ── Upcoming pressure (next 7 days, always relative to today) ───────────
   const in7 = new Date(today);
@@ -454,7 +541,143 @@ export default function BudgetCoach() {
           )}
         </motion.div>
 
-        {/* ── D: Upcoming Pressure (next 7 days) ── */}
+        {/* ── D: Savings Runway ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}
+          className={`glass-card p-5 rounded-2xl border ${rm.border} space-y-4`}
+        >
+          <div className="flex items-center justify-between">
+            <SectionHeader icon={<ShieldCheck className={`w-4 h-4 ${rm.color}`} />} title="Savings Runway" />
+            {resilienceLevel !== "unknown" && (
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-lg ${rm.bg} ${rm.color}`}>
+                {rm.label}
+              </span>
+            )}
+          </div>
+
+          {/* Account balances */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="glass-card p-3 rounded-xl">
+              <p className="text-[10px] text-muted-foreground mb-0.5">Liquid balance</p>
+              <p className={`text-sm font-bold tabular-nums ${liquidBalCents < 0 ? "text-rose-400" : ""}`}>
+                {formatMoney(Math.abs(liquidBalCents), currency)}
+                {liquidBalCents < 0 && <span className="text-[10px] text-rose-400/70 ml-1">neg</span>}
+              </p>
+              <p className="text-[10px] text-muted-foreground/50 mt-0.5">Cash · Checking · Savings</p>
+            </div>
+            <div className="glass-card p-3 rounded-xl">
+              <p className="text-[10px] text-muted-foreground mb-0.5">Total balance</p>
+              <p className={`text-sm font-bold tabular-nums ${totalBalCents < 0 ? "text-rose-400" : ""}`}>
+                {formatMoney(Math.abs(totalBalCents), currency)}
+                {totalBalCents < 0 && <span className="text-[10px] text-rose-400/70 ml-1">neg</span>}
+              </p>
+              <p className="text-[10px] text-muted-foreground/50 mt-0.5">All {currency} accounts</p>
+            </div>
+          </div>
+
+          {/* Runway table */}
+          {currAccounts.length === 0 ? (
+            <div className="py-3 text-center space-y-1">
+              <p className="text-sm text-muted-foreground">No {currency} accounts yet.</p>
+              <Link href="/accounts">
+                <button className="text-xs text-primary hover:underline">Add account →</button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wide font-medium">Runway by baseline</p>
+              <div className="rounded-xl overflow-hidden border border-white/5 divide-y divide-white/5">
+                <div className="grid grid-cols-3 px-3 py-1.5 bg-white/5">
+                  <p className="text-[10px] text-muted-foreground/60">Baseline</p>
+                  <p className="text-[10px] text-muted-foreground/60 text-center">Liquid</p>
+                  <p className="text-[10px] text-muted-foreground/60 text-right">Total</p>
+                </div>
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Fixed bills</p>
+                  <p className={`text-xs font-semibold text-center tabular-nums ${liquidRunwayFixed !== null ? rm.color : "text-muted-foreground/40"}`}>
+                    {fixedBaselineCents > 0 ? fmtRunway(liquidRunwayFixed) : "—"}
+                  </p>
+                  <p className={`text-xs font-semibold text-right tabular-nums ${totalRunwayFixed !== null ? "text-indigo-300" : "text-muted-foreground/40"}`}>
+                    {fixedBaselineCents > 0 ? fmtRunway(totalRunwayFixed) : "—"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Avg actual</p>
+                  <p className={`text-xs font-semibold text-center tabular-nums ${liquidRunwayActual !== null ? "text-indigo-300" : "text-muted-foreground/40"}`}>
+                    {hasActualHistory ? fmtRunway(liquidRunwayActual) : <span className="text-[10px] text-muted-foreground/40">Need history</span>}
+                  </p>
+                  <p className={`text-xs font-semibold text-right tabular-nums ${totalRunwayActual !== null ? "text-indigo-300" : "text-muted-foreground/40"}`}>
+                    {hasActualHistory ? fmtRunway(totalRunwayActual) : "—"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Budgeted</p>
+                  <p className={`text-xs font-semibold text-center tabular-nums ${liquidRunwayBudget !== null ? "text-indigo-300" : "text-muted-foreground/40"}`}>
+                    {budgetedBaselineCents > 0 ? fmtRunway(liquidRunwayBudget) : "—"}
+                  </p>
+                  <p className={`text-xs font-semibold text-right tabular-nums ${totalRunwayBudget !== null ? "text-indigo-300" : "text-muted-foreground/40"}`}>
+                    {budgetedBaselineCents > 0 ? fmtRunway(totalRunwayBudget) : "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Emergency fund targets */}
+          {emgTargets.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wide font-medium">Emergency fund targets</p>
+              <div className="space-y-2">
+                {emgTargets.map(({ mos, target, progress, gap }) => (
+                  <div key={mos} className="glass-card p-3 rounded-xl space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium">{mos}-month fund</p>
+                      <p className="text-xs font-bold tabular-nums">{formatMoney(target, currency)}</p>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          progress >= 1 ? "bg-emerald-500" : progress >= 0.5 ? "bg-indigo-400" : progress >= 0.25 ? "bg-amber-400" : "bg-rose-400"
+                        }`}
+                        style={{ width: `${Math.round(Math.max(progress, 0) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-muted-foreground/60">{Math.round(Math.max(progress, 0) * 100)}% funded</p>
+                      {gap > 0 ? (
+                        <p className="text-[10px] text-muted-foreground/60">{formatMoney(gap, currency)} gap</p>
+                      ) : (
+                        <p className="text-[10px] text-emerald-400">✓ Met</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="py-2 text-center">
+              <p className="text-xs text-muted-foreground">Add fixed bills or budgets to calculate emergency targets.</p>
+            </div>
+          )}
+
+          {/* Emergency Fund goal link */}
+          {emergencyGoal && (
+            <Link href="/goals">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/15 hover:bg-emerald-500/10 transition-colors">
+                <p className="text-xs text-emerald-400">
+                  Emergency Fund goal: {Math.round(Math.min(emergencyGoal.currentAmountCents / Math.max(emergencyGoal.targetAmountCents, 1), 1) * 100)}% complete
+                </p>
+                <ChevronRight className="w-3.5 h-3.5 text-emerald-400/60" />
+              </div>
+            </Link>
+          )}
+
+          <p className="text-[10px] text-muted-foreground/40 leading-relaxed">
+            Liquid runway uses cash, checking, and savings. Total runway includes all {currency} accounts.
+          </p>
+        </motion.div>
+
+        {/* ── E: Upcoming Pressure (next 7 days) ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}
           className="glass-card p-5 rounded-2xl space-y-3"

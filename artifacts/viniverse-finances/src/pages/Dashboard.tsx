@@ -11,7 +11,7 @@ import { TransactionCard } from "@/components/TransactionCard";
 import {
   useLiveAccounts, useLiveTransactions, useLiveBudgets, useLiveRecurringRules,
   useLiveGoals, useLiveSnapshots, useLiveWeeklyPlans, useLiveQuickTemplates, useLiveTransfers,
-  calcBudgetSpent, calcNetWorth, getNextOccurrenceAfter,
+  calcBudgetSpent, calcNetWorth, calcAccountBalance, getNextOccurrenceAfter,
   getWeekStartDate, getWeekEndDate, toDateStr, generateDueTransactions,
   getOccurrenceDatesForRange,
 } from "@/hooks/use-finance";
@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw,
   BarChart2, Zap, FileBarChart2, Sparkles, ChevronDown, ChevronUp,
-  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers, ArrowLeftRight, Receipt, Lightbulb,
+  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers, ArrowLeftRight, Receipt, Lightbulb, ShieldCheck,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import { useToast } from "@/hooks/use-toast";
@@ -315,6 +315,62 @@ export default function Dashboard() {
   }
   const topCoachAlerts = coachAlerts.slice(0, 3);
 
+  // ── Savings Runway (USD, Dashboard card) ─────────────────────────────────
+  const usdLiquidAccts = accounts.filter(
+    (a) => a.currencyCode === "USD" && (a.type === "CHECKING" || a.type === "SAVINGS" || a.type === "CASH")
+  );
+  const usdLiquidBalCents   = usdLiquidAccts.reduce((s, a) => s + calcAccountBalance(a, transactions, transfers), 0);
+  const usdFixedExpBaseline = recurringRules
+    .filter((r) => r.isActive && r.type === "EXPENSE" && r.currencyCode === "USD")
+    .reduce((s, r) => {
+      switch (r.frequency) {
+        case "WEEKLY":   return s + Math.round(r.amountCents * 52 / 12);
+        case "BIWEEKLY": return s + Math.round(r.amountCents * 26 / 12);
+        case "MONTHLY":  return s + r.amountCents;
+        case "YEARLY":   return s + Math.round(r.amountCents / 12);
+      }
+    }, 0);
+  const usdLiquidRunway = usdFixedExpBaseline > 0 && usdLiquidBalCents > 0
+    ? usdLiquidBalCents / usdFixedExpBaseline : null;
+  const usdRunwayLevelKey =
+    usdLiquidRunway === null   ? null
+    : usdLiquidRunway < 1      ? "critical"
+    : usdLiquidRunway < 3      ? "fragile"
+    : usdLiquidRunway < 6      ? "building"
+    : usdLiquidRunway < 12     ? "strong"
+    :                            "fortress";
+  const usdRunwayLabel =
+    usdRunwayLevelKey === "critical" ? "Critical"
+    : usdRunwayLevelKey === "fragile"  ? "Fragile"
+    : usdRunwayLevelKey === "building" ? "Building"
+    : usdRunwayLevelKey === "strong"   ? "Strong"
+    : usdRunwayLevelKey === "fortress" ? "Fortress"
+    : null;
+  const usdRunwayColor =
+    usdRunwayLevelKey === "critical" ? "text-rose-400"
+    : usdRunwayLevelKey === "fragile"  ? "text-amber-400"
+    : usdRunwayLevelKey === "building" ? "text-indigo-400"
+    : usdRunwayLevelKey === "strong"   ? "text-emerald-400"
+    : usdRunwayLevelKey === "fortress" ? "text-purple-400"
+    :                                     "text-muted-foreground";
+  const usdRunwayBorder =
+    usdRunwayLevelKey === "critical" ? "border-rose-500/15"
+    : usdRunwayLevelKey === "fragile"  ? "border-amber-500/15"
+    : usdRunwayLevelKey === "building" ? "border-indigo-500/15"
+    : usdRunwayLevelKey === "strong"   ? "border-emerald-500/15"
+    : usdRunwayLevelKey === "fortress" ? "border-purple-500/15"
+    :                                     "border-white/10";
+  const usdRunwayBadgeCss =
+    usdRunwayLevelKey === "critical" ? "bg-rose-500/10 text-rose-400"
+    : usdRunwayLevelKey === "fragile"  ? "bg-amber-500/10 text-amber-400"
+    : usdRunwayLevelKey === "building" ? "bg-indigo-500/10 text-indigo-400"
+    : usdRunwayLevelKey === "strong"   ? "bg-emerald-500/10 text-emerald-400"
+    :                                     "bg-purple-500/10 text-purple-400";
+  const fmtUsdRunway = usdLiquidRunway === null  ? "—"
+    : usdLiquidRunway >= 12 ? "12+ mo"
+    : usdLiquidRunway >= 6  ? "6+ mo"
+    : `${usdLiquidRunway.toFixed(1)} mo`;
+
   // ─── Generate Due ────────────────────────────────────────────────────────
   const handleGenerateDue = useCallback(async () => {
     if (isGenerating) return;
@@ -604,6 +660,32 @@ export default function Dashboard() {
             </p>
           )}
         </motion.div>
+
+        {/* ── Savings Runway ───────────────────────────────────────────── */}
+        {usdLiquidRunway !== null && usdRunwayLabel !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.065 }}
+            className={`glass-card rounded-2xl p-3 border ${usdRunwayBorder}`}
+            data-testid="card-runway"
+          >
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className={`w-3.5 h-3.5 ${usdRunwayColor}`} />
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Savings Runway</p>
+              </div>
+              <Link href="/coach" className="text-xs text-primary hover:text-primary/80">Coach</Link>
+            </div>
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <p className={`text-2xl font-bold tabular-nums ${usdRunwayColor}`}>{fmtUsdRunway}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">liquid · fixed commitments · USD</p>
+              </div>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${usdRunwayBadgeCss}`}>
+                {usdRunwayLabel}
+              </span>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Budget Coach alerts ──────────────────────────────────────── */}
         {topCoachAlerts.length > 0 && (

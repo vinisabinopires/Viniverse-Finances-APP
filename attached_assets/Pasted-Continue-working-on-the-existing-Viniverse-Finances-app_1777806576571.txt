@@ -1,0 +1,222 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.7 - Savings Runway & Emergency Resilience.
+
+Important direction:
+Do NOT add CSV export, PDF export, cloud sync, biometric auth, bank integrations, external APIs, AI APIs, bottom navigation changes, or duplicate calendar views in this phase.
+Do NOT change the database schema unless absolutely necessary.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, subscriptions, transfers, financial goals, net worth snapshots, weekly cashflow, monthly reports, cashflow calendar, quick templates, transfer insights, budget coach, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Add a Savings Runway / Emergency Resilience feature that helps the user understand how many months their available money could sustain fixed commitments or average spending if income stopped.
+
+Important financial rules:
+- Transfers are not income or expenses.
+- Transfers should affect account balances only.
+- Runway should use current account balances calculated with transactions and transfers.
+- Do not modify accounts, transactions, transfers, budgets, recurring rules, or goals automatically.
+- This feature is advisory only.
+
+1. Add Savings Runway section to Budget Coach page
+On /coach, add a new section called:
+
+"Savings Runway"
+
+Place it after Fixed Commitment Pressure and before Upcoming in 7 Days.
+
+This section should calculate resilience using selected currency only.
+
+2. Currency behavior
+Use the existing USD / BRL toggle from Budget Coach.
+
+All calculations must respect selected currency.
+Do not mix USD and BRL.
+Do not convert currencies in this phase.
+
+3. Account balance source
+Use existing calcAccountBalance(account, transactions, transfers).
+
+For the selected currency, calculate:
+
+A) Liquid balance
+Include accounts whose type suggests they are liquid:
+- CASH
+- CHECKING
+- SAVINGS
+
+If account types differ in the existing app, infer as safely as possible from current account.type values.
+
+B) Total balance
+Include all accounts in selected currency.
+
+Show both:
+- Liquid runway
+- Total runway
+
+Explain:
+"Liquid runway uses cash, checking, and savings accounts. Total runway includes all accounts in this currency."
+
+4. Monthly expense baselines
+Calculate three runway baselines:
+
+A) Fixed commitments baseline
+Use active recurring EXPENSE rules from Subscription Center logic.
+Convert to monthly estimate:
+- WEEKLY: amount * 52 / 12
+- BIWEEKLY: amount * 26 / 12
+- MONTHLY: amount
+- YEARLY: amount / 12
+
+B) Average actual expenses baseline
+Use expense transactions from the last 3 completed months plus current month if available.
+Selected currency only.
+Transfers excluded.
+Calculate monthly average safely.
+If not enough data exists, show "Not enough history yet."
+
+C) Budgeted spending baseline
+Use budgets for the selected month and selected currency.
+Sum monthlyLimitCents.
+
+5. Runway calculations
+For each baseline, calculate:
+
+- liquid runway months = liquidBalance / monthlyBaseline
+- total runway months = totalBalance / monthlyBaseline
+
+Handle:
+- baseline = 0
+- no accounts
+- no expenses
+- no budgets
+- no recurring expenses
+
+Display values as:
+- 0.8 months
+- 2.4 months
+- 6+ months
+- 12+ months
+
+6. Emergency fund targets
+Show emergency fund target cards:
+
+Based on fixed commitments baseline:
+- 1 month target
+- 3 months target
+- 6 months target
+- 12 months target
+
+For each:
+- target amount
+- current liquid balance
+- gap remaining
+- progress percentage
+
+If there is no fixed commitments baseline, use budgeted spending baseline.
+If neither exists, show a message:
+"Add fixed bills or budgets to calculate emergency targets."
+
+7. Resilience level
+Add a simple deterministic label:
+
+Based on liquid runway using fixed commitments baseline:
+- Critical: less than 1 month
+- Fragile: 1 to 2.9 months
+- Building: 3 to 5.9 months
+- Strong: 6 to 11.9 months
+- Fortress: 12+ months
+
+Use tasteful labels:
+- Critical
+- Fragile
+- Building
+- Strong
+- Fortress
+
+Do not use fear-heavy language.
+
+8. Dashboard integration
+Add a compact Dashboard card only if clean and low risk:
+
+"Runway"
+
+Show:
+- liquid runway months using fixed commitments baseline
+- resilience label
+- CTA: "View Coach"
+
+Keep it compact.
+Do not make Dashboard noisy.
+Do not show if no baseline exists.
+
+9. Goals integration
+If an Emergency Fund goal exists:
+- show a small line in Savings Runway:
+"Emergency Fund goal: X% complete"
+- link to /goals
+
+Do not modify the goal.
+Do not auto-create goals.
+
+10. UI polish
+Keep dark iOS-like glassmorphism.
+Use calm visual language:
+- rose for Critical
+- amber for Fragile
+- blue/indigo for Building
+- emerald for Strong
+- gold/purple for Fortress if existing style allows
+
+Make it readable on iPhone.
+Use compact cards and progress bars.
+
+11. Data safety
+Handle safely:
+- no accounts
+- one account
+- no recurring expenses
+- no budgets
+- no expense history
+- deleted account references
+- transfers present
+- BRL and USD separately
+- zero balances
+- negative balances
+- account types missing or unexpected
+- old backups
+- invalid dates
+
+12. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- Budget Coach opens normally.
+- Savings Runway section appears.
+- USD/BRL toggle updates runway independently.
+- Transfers affect account balances used in runway.
+- Transfers do not count as expenses.
+- Liquid balance includes only cash/checking/savings-style accounts.
+- Total balance includes all accounts in selected currency.
+- Fixed commitments baseline matches Subscription Center monthly estimate.
+- Average actual expenses excludes transfers.
+- Budgeted spending baseline matches selected month budgets.
+- Runway months calculate correctly.
+- Emergency target gaps calculate correctly.
+- Resilience label changes correctly.
+- Dashboard Runway card appears only when valid baseline exists.
+- Emergency Fund goal line appears if such a goal exists.
+- Existing pages still work:
+  Dashboard, Transactions, Accounts, Budgets, Recurring, Subscriptions, Transfers, Goals, Net Worth, Weekly Cashflow, Reports, Calendar, Quick Templates, Setup, More, PIN Lock, PWA, Backup/Import/Export.
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files created
+- files updated
+- whether database schema changed
+- Savings Runway behavior
+- baselines used
+- Dashboard integration
+- what I should test manually next
