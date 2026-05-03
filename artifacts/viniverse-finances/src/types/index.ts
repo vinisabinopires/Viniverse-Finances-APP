@@ -37,6 +37,22 @@ export interface Budget {
 
 export type RecurringFrequency = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'YEARLY';
 
+export type GoalType = 'EMERGENCY_FUND' | 'SAVINGS' | 'INVESTMENT' | 'TRAVEL' | 'DEBT_PAYOFF' | 'CUSTOM';
+
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  goalType: GoalType;
+  targetAmountCents: number;
+  currentAmountCents: number;
+  currencyCode: 'USD' | 'BRL';
+  targetDate?: string; // YYYY-MM-DD
+  notes?: string;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RecurringRule {
   id: string;
   name: string;

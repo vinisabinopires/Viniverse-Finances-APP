@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { liveQuery } from 'dexie';
 import { db } from '../db/db';
-import type { Account, Transaction, Budget, RecurringRule, RecurringFrequency } from '../types';
+import type { Account, Transaction, Budget, RecurringRule, RecurringFrequency, FinancialGoal } from '../types';
 
 export { db };
 
@@ -33,6 +33,10 @@ export function useLiveBudgets(): Budget[] {
 
 export function useLiveRecurringRules(): RecurringRule[] {
   return useDexieLiveQuery(() => db.recurringRules.orderBy('createdAt').reverse().toArray(), []);
+}
+
+export function useLiveGoals(): FinancialGoal[] {
+  return useDexieLiveQuery(() => db.financialGoals.orderBy('createdAt').toArray(), []);
 }
 
 // ─── Transactions ────────────────────────────────────────────────────────────
@@ -127,7 +131,6 @@ function advanceDate(date: Date, frequency: RecurringFrequency): void {
   }
 }
 
-/** All YYYY-MM-DD occurrence strings from startDate up to (and including) upTo. */
 function getOccurrenceDates(rule: RecurringRule, upTo: Date): string[] {
   const dates: string[] = [];
   const start = new Date(rule.startDate + 'T12:00:00');
@@ -144,7 +147,6 @@ function getOccurrenceDates(rule: RecurringRule, upTo: Date): string[] {
   return dates;
 }
 
-/** The next occurrence date AFTER `after`. Returns null if the rule has ended. */
 export function getNextOccurrenceAfter(rule: RecurringRule, after: Date): Date | null {
   const start = new Date(rule.startDate + 'T12:00:00');
   const endDate = rule.endDate ? new Date(rule.endDate + 'T12:00:00') : null;
@@ -212,6 +214,22 @@ export async function generateDueTransactions(rules: RecurringRule[]): Promise<G
   return { created, skipped };
 }
 
+// ─── Financial Goals ──────────────────────────────────────────────────────────
+
+export async function addGoal(data: Omit<FinancialGoal, 'id' | 'createdAt' | 'updatedAt'>) {
+  const now = new Date().toISOString();
+  await db.financialGoals.add({ id: crypto.randomUUID(), ...data, createdAt: now, updatedAt: now });
+}
+
+export async function updateGoal(id: string, data: Partial<FinancialGoal>) {
+  const now = new Date().toISOString();
+  await db.financialGoals.update(id, { ...data, updatedAt: now });
+}
+
+export async function deleteGoal(id: string) {
+  await db.financialGoals.delete(id);
+}
+
 // ─── Clear All ────────────────────────────────────────────────────────────────
 
 export async function clearAllData() {
@@ -219,5 +237,6 @@ export async function clearAllData() {
   await db.accounts.clear();
   await db.budgets.clear();
   await db.recurringRules.clear();
+  await db.financialGoals.clear();
   localStorage.removeItem('viniverse-seeded');
 }

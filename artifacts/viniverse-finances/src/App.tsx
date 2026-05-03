@@ -11,6 +11,7 @@ import Budgets from "@/pages/Budgets";
 import Accounts from "@/pages/Accounts";
 import More from "@/pages/More";
 import Recurring from "@/pages/Recurring";
+import Goals from "@/pages/Goals";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/accounts" component={Accounts} />
       <Route path="/more" component={More} />
       <Route path="/recurring" component={Recurring} />
+      <Route path="/goals" component={Goals} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,0 +1,156 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. Inspect the current codebase first and preserve the current React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, onboarding flow, transactions, accounts, budgets, recurring transaction system, backup/import/export, and current app behavior.
+
+Goal of this phase:
+Add financial goals and emergency fund tracking so the user can define savings targets, monitor progress, and track long-term financial objectives.
+
+Important constraints:
+- Keep everything local-first using IndexedDB/Dexie.
+- Do not add backend, authentication, Firebase, Supabase, or paid APIs.
+- Do not rebuild the app.
+- Avoid heavy chart libraries.
+- Preserve all existing data and features.
+- Do not duplicate seed/demo data.
+- Do not break backup/import/export.
+- Do not add another bottom navigation item. Keep Goals accessible from More/Settings.
+
+1. Database changes
+Upgrade Dexie safely to the next schema version and add a financialGoals table.
+
+FinancialGoal fields:
+- id
+- name
+- goalType: EMERGENCY_FUND, SAVINGS, INVESTMENT, TRAVEL, DEBT_PAYOFF, CUSTOM
+- targetAmountCents
+- currentAmountCents
+- currencyCode: USD or BRL
+- targetDate optional
+- notes optional
+- isArchived boolean
+- createdAt
+- updatedAt
+
+Important:
+- Existing data must continue working.
+- Existing backups without financialGoals must still import correctly.
+- Clear All Data must clear financialGoals too.
+
+2. Goals page
+Create a new page called Goals.
+
+Do not add it to bottom nav.
+Instead:
+- Add a card/button in More/Settings: “Financial Goals”
+- Clicking it navigates to /goals
+
+Goals page should show:
+- Active goals first
+- Archived goals separately or behind a simple toggle
+- Goal cards showing:
+  - name
+  - goal type
+  - current amount
+  - target amount
+  - remaining amount
+  - progress percentage
+  - currency
+  - target date if available
+  - progress bar
+- Empty state when no goals exist
+- Add Goal button
+- Edit Goal
+- Delete Goal with confirmation
+- Archive/unarchive goal
+
+3. Goal form
+Create a form for add/edit goals.
+
+Fields:
+- name
+- goal type
+- target amount
+- current amount
+- currency: USD or BRL
+- target date optional
+- notes optional
+
+Helpful defaults:
+- goalType defaults to SAVINGS
+- currency defaults to USD
+- currentAmount starts at 0
+
+The form should support both add and edit mode.
+
+4. Emergency Fund special behavior
+If goalType is EMERGENCY_FUND:
+- Show a special label or badge: “Emergency Fund”
+- Show a helper text:
+  “A strong emergency fund usually covers 3 to 6 months of essential expenses.”
+- If possible, estimate months covered using the current month’s expenses:
+  monthsCovered = currentAmountCents / currentMonthExpensesCents
+- If currentMonthExpensesCents is 0, show “Add expenses to estimate months covered.”
+- Keep this calculation currency-specific. Do not mix USD and BRL.
+
+5. Dashboard integration
+Add a compact “Goals Progress” section on the Dashboard.
+
+Show up to 3 active goals:
+- Emergency Fund first if it exists
+- Then goals closest to completion
+- Each item should show:
+  - goal name
+  - current vs target
+  - percentage
+  - small progress bar
+
+If there are no goals, show a subtle prompt:
+“Create your first financial goal.”
+
+Keep Dashboard clean and not cluttered.
+
+6. More/Settings integration
+In More/Settings, create or update a “Features” section with:
+- Recurring Transactions
+- Financial Goals
+
+Each should be a polished glassmorphism card.
+
+7. Backup/import/export
+Update backup export/import to include financialGoals.
+Use backup version 4 if needed.
+Import validation must handle:
+- old backups without budgets, recurringRules, or financialGoals
+- backups with all current data
+- invalid JSON safely without breaking the app
+
+8. UI polish
+- Keep the dark iOS-like glassmorphism style.
+- Goal cards should feel premium, calm, and motivational.
+- Progress bars should be smooth and readable.
+- Forms should be comfortable on mobile.
+- Keep bottom nav unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+9. Testing
+Run TypeScript checks and fix all errors.
+Check console logs and fix runtime errors.
+
+Manually verify:
+- Create an Emergency Fund goal
+- Create a Travel or Investment goal
+- Edit a goal
+- Delete a goal
+- Archive and unarchive a goal
+- Dashboard shows Goals Progress
+- Emergency Fund estimates months covered when expenses exist
+- Export includes financialGoals
+- Import restores financialGoals
+- Clear All Data removes financialGoals too
+- Existing Transactions, Budgets, Accounts, Recurring, Dashboard, and More still work
+
+Deliverable:
+At the end, summarize:
+- files created
+- files updated
+- database schema changes
+- goal tracking behavior
+- what I should test manually next

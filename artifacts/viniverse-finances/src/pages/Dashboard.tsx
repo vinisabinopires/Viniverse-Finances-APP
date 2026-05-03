@@ -7,81 +7,84 @@ import { MonthSelector } from "@/components/MonthSelector";
 import { TransactionCard } from "@/components/TransactionCard";
 import {
   useLiveAccounts, useLiveTransactions, useLiveBudgets, useLiveRecurringRules,
-  calcBudgetSpent, getNextOccurrenceAfter,
+  useLiveGoals, calcBudgetSpent, getNextOccurrenceAfter,
 } from "@/hooks/use-finance";
 import { formatMoney, formatDate, formatFrequency } from "@/utils";
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw } from "lucide-react";
+import { GOAL_TYPE_META } from "@/pages/Goals";
 import type { Transaction } from "@/types";
 
 function getBudgetStatus(pct: number) {
   if (pct >= 100) return { label: "Over Budget", color: "rose" } as const;
-  if (pct >= 70) return { label: "Caution", color: "amber" } as const;
-  return { label: "Safe", color: "emerald" } as const;
+  if (pct >= 70)  return { label: "Caution",     color: "amber" } as const;
+  return                 { label: "Safe",         color: "emerald" } as const;
 }
-
-const barColors = { emerald: "bg-emerald-500/70", amber: "bg-amber-500/70", rose: "bg-rose-500/70" };
-const textColors = { emerald: "text-emerald-400", amber: "text-amber-400", rose: "text-rose-400" };
+const barColors  = { emerald: "bg-emerald-500/70", amber: "bg-amber-500/70", rose: "bg-rose-500/70" };
+const textColors = { emerald: "text-emerald-400",  amber: "text-amber-400",  rose: "text-rose-400" };
 
 export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
-  const accounts = useLiveAccounts();
-  const transactions = useLiveTransactions();
-  const budgets = useLiveBudgets();
-  const recurringRules = useLiveRecurringRules();
+  const accounts        = useLiveAccounts();
+  const transactions    = useLiveTransactions();
+  const budgets         = useLiveBudgets();
+  const recurringRules  = useLiveRecurringRules();
+  const goals           = useLiveGoals();
 
   const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
-
-  const currentMonthTransactions = transactions.filter((t) => {
-    const tDate = new Date(t.occurredAt);
-    return tDate.getMonth() === currentDate.getMonth() && tDate.getFullYear() === currentDate.getFullYear();
+  const currentMonthTx = transactions.filter((t) => {
+    const d = new Date(t.occurredAt);
+    return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear();
   });
 
-  const monthIncome = currentMonthTransactions.filter((t) => t.type === "INCOME").reduce((a, t) => a + t.amountCents, 0);
-  const monthExpense = currentMonthTransactions.filter((t) => t.type === "EXPENSE").reduce((a, t) => a + t.amountCents, 0);
+  const monthIncome  = currentMonthTx.filter((t) => t.type === "INCOME").reduce((a, t)  => a + t.amountCents, 0);
+  const monthExpense = currentMonthTx.filter((t) => t.type === "EXPENSE").reduce((a, t) => a + t.amountCents, 0);
 
   const totalUsdBalance = accounts.filter((a) => a.currencyCode === "USD").reduce((acc, account) => {
     const accTx = transactions.filter((t) => t.accountId === account.id);
     return acc + account.initialBalanceCents + accTx.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amountCents, 0) - accTx.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amountCents, 0);
   }, 0);
-
   const totalBrlBalance = accounts.filter((a) => a.currencyCode === "BRL").reduce((acc, account) => {
     const accTx = transactions.filter((t) => t.accountId === account.id);
     return acc + account.initialBalanceCents + accTx.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amountCents, 0) - accTx.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amountCents, 0);
   }, 0);
 
-  const categoryTotals = currentMonthTransactions.filter((t) => t.type === "EXPENSE").reduce<Record<string, number>>((acc, t) => {
-    acc[t.category] = (acc[t.category] || 0) + t.amountCents;
-    return acc;
+  const categoryTotals = currentMonthTx.filter((t) => t.type === "EXPENSE").reduce<Record<string, number>>((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + t.amountCents; return acc;
   }, {});
-  const topCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topCategories     = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
   const maxCategoryAmount = topCategories[0]?.[1] || 1;
-  const totalBar = monthIncome + monthExpense || 1;
-  const incomeBarPct = Math.round((monthIncome / totalBar) * 100);
-  const expenseBarPct = Math.round((monthExpense / totalBar) * 100);
-
-  const recentTransactions = currentMonthTransactions.slice(0, 5);
+  const totalBar          = monthIncome + monthExpense || 1;
+  const incomeBarPct      = Math.round((monthIncome / totalBar) * 100);
+  const expenseBarPct     = Math.round((monthExpense / totalBar) * 100);
+  const recentTransactions = currentMonthTx.slice(0, 5);
 
   // Budget Watch
   const monthBudgets = budgets
     .filter((b) => b.month === currentMonth)
     .map((b) => ({ budget: b, spent: calcBudgetSpent(transactions, b.category, b.month, b.currencyCode), pct: 0 }))
     .map((x) => ({ ...x, pct: Math.round((x.spent / x.budget.monthlyLimitCents) * 100) }))
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 5);
+    .sort((a, b) => b.pct - a.pct).slice(0, 5);
 
   // Recurring Watch — upcoming within 14 days
   const today = new Date();
-  const in14 = new Date(today);
-  in14.setDate(today.getDate() + 14);
-
+  const in14  = new Date(today); in14.setDate(today.getDate() + 14);
   const upcomingRecurring = recurringRules
     .filter((r) => r.isActive)
     .map((r) => ({ rule: r, nextDue: getNextOccurrenceAfter(r, today) }))
-    .filter((x) => x.nextDue !== null && x.nextDue <= in14)
-    .sort((a, b) => (a.nextDue!.getTime() - b.nextDue!.getTime()))
-    .slice(0, 5) as { rule: (typeof recurringRules)[0]; nextDue: Date }[];
+    .filter((x): x is { rule: typeof x.rule; nextDue: Date } => x.nextDue !== null && x.nextDue <= in14)
+    .sort((a, b) => a.nextDue.getTime() - b.nextDue.getTime())
+    .slice(0, 5);
+
+  // Goals Progress — Emergency Fund first, then closest to completion, up to 3
+  const activeGoals = goals.filter((g) => !g.isArchived);
+  const dashGoals = [
+    ...activeGoals.filter((g) => g.goalType === "EMERGENCY_FUND"),
+    ...activeGoals.filter((g) => g.goalType !== "EMERGENCY_FUND")
+      .map((g) => ({ g, pct: g.targetAmountCents > 0 ? g.currentAmountCents / g.targetAmountCents : 0 }))
+      .sort((a, b) => b.pct - a.pct).map((x) => x.g),
+  ].slice(0, 3);
 
   return (
     <Layout>
@@ -117,7 +120,7 @@ export default function Dashboard() {
             {(monthIncome > 0 || monthExpense > 0) && (
               <div className="mt-5 space-y-2">
                 <div className="flex gap-1.5 h-2 rounded-full overflow-hidden bg-white/5">
-                  {monthIncome > 0 && <div className="bg-emerald-500/70 rounded-full transition-all duration-700" style={{ width: `${incomeBarPct}%` }} />}
+                  {monthIncome  > 0 && <div className="bg-emerald-500/70 rounded-full transition-all duration-700" style={{ width: `${incomeBarPct}%` }} />}
                   {monthExpense > 0 && <div className="bg-rose-500/70 rounded-full transition-all duration-700" style={{ width: `${expenseBarPct}%` }} />}
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -128,8 +131,54 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
+        {/* Goals Progress */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="glass-card p-5 rounded-2xl" data-testid="card-goals-progress">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Goals Progress</h3>
+            </div>
+            <Link href="/goals" className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
+              All <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+          {dashGoals.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-3">
+              No goals yet.{" "}
+              <Link href="/goals" className="text-primary hover:underline">Create your first financial goal.</Link>
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {dashGoals.map((goal, i) => {
+                const pct = goal.targetAmountCents > 0
+                  ? Math.min(Math.round((goal.currentAmountCents / goal.targetAmountCents) * 100), 100) : 0;
+                const meta = GOAL_TYPE_META[goal.goalType];
+                const barColor = pct >= 100 ? "bg-yellow-400" : pct >= 70 ? "bg-emerald-500/80" : pct >= 30 ? "bg-indigo-500/80" : "bg-blue-500/80";
+                return (
+                  <motion.div key={goal.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base leading-none flex-shrink-0">{meta.emoji}</span>
+                        <span className="text-sm font-medium truncate">{goal.name}</span>
+                      </div>
+                      <span className={`text-xs font-bold tabular-nums flex-shrink-0 ${pct >= 100 ? "text-yellow-400" : "text-muted-foreground"}`}>{pct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{formatMoney(goal.currentAmountCents, goal.currencyCode)}</span>
+                      <span>{formatMoney(goal.targetAmountCents, goal.currencyCode)}</span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+
         {/* Recurring Watch */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="glass-card p-5 rounded-2xl" data-testid="card-recurring-watch">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="glass-card p-5 rounded-2xl" data-testid="card-recurring-watch">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <RefreshCw className="w-4 h-4 text-muted-foreground" />
@@ -144,8 +193,8 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-2">
               {upcomingRecurring.map(({ rule, nextDue }) => {
-                const isIncome = rule.type === "INCOME";
-                const daysUntil = Math.ceil((nextDue.getTime() - today.getTime()) / 86400000);
+                const isIncome   = rule.type === "INCOME";
+                const daysUntil  = Math.ceil((nextDue.getTime() - today.getTime()) / 86400000);
                 return (
                   <div key={rule.id} className="flex items-center gap-3 py-2 px-1">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${isIncome ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
@@ -169,7 +218,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Budget Watch */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="glass-card p-5 rounded-2xl" data-testid="card-budget-watch">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass-card p-5 rounded-2xl" data-testid="card-budget-watch">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="w-4 h-4 text-muted-foreground" />
@@ -216,7 +265,7 @@ export default function Dashboard() {
 
         {/* Top Expenses */}
         {topCategories.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass-card p-5 rounded-2xl" data-testid="card-top-categories">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} className="glass-card p-5 rounded-2xl" data-testid="card-top-categories">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Top Expenses</h3>
