@@ -1,0 +1,152 @@
+Build a complete MVP web app called “Viniverse – Finances”.
+
+Goal:
+Create a personal finance control app for one user, focused on weekly income, expenses, accounts, balances, and monthly cashflow tracking. This is the first module of a larger future ecosystem called “Viniverse”.
+
+Important constraints:
+- Build a working MVP first.
+- Keep the code simple, clean, modular, and easy to expand.
+- Do not use paid APIs.
+- Do not use Firebase, Supabase, or external backend for now.
+- Store data locally in the browser using IndexedDB.
+- Make it a PWA-ready app.
+- Prioritize mobile-first design, especially for iPhone screens.
+- Use a beautiful dark glassmorphism UI inspired by iOS/Apple design.
+- Use concise implementation. Avoid unnecessary libraries, massive abstractions, or over-engineering.
+
+Tech stack:
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Dexie for IndexedDB
+- React Router if needed
+- Use local browser storage only
+
+App name:
+Viniverse – Finances
+
+Visual style:
+- Dark futuristic interface
+- Glassmorphism cards
+- Rounded corners
+- Subtle blur effects
+- Soft shadows
+- Clean typography
+- Accent colors: purple/blue/cyan gradients
+- Mobile bottom navigation
+- Floating action button for adding transactions
+- Modern dashboard feel, but not cluttered
+
+Core MVP features:
+
+1. Dashboard page
+Show:
+- Current month income
+- Current month expenses
+- Current month net balance
+- Total balance across all accounts
+- Recent transactions
+- Quick button to add income or expense
+- Month selector/filter
+
+2. Transactions page
+Features:
+- List all transactions
+- Filter by month
+- Filter by type: income, expense, all
+- Add transaction
+- Edit transaction
+- Delete transaction
+- Transaction fields:
+  - id
+  - type: INCOME or EXPENSE
+  - amountCents
+  - currencyCode: USD or BRL
+  - accountId
+  - category
+  - description
+  - occurredAt
+  - createdAt
+  - updatedAt
+
+3. Accounts page
+Features:
+- Create account
+- Edit account
+- Delete account
+- Show account balance calculated from transactions
+- Account fields:
+  - id
+  - name
+  - type: CHECKING, SAVINGS, CASH, INVESTMENT, CREDIT_CARD
+  - currencyCode: USD or BRL
+  - initialBalanceCents
+  - createdAt
+  - updatedAt
+
+4. More/Settings page
+Show:
+- App name and version
+- Local-only data notice
+- Export data as JSON
+- Import data from JSON
+- Clear all data button with confirmation
+
+5. Data model and persistence
+Use Dexie with this schema:
+- accounts: id, name, type, currencyCode, createdAt, updatedAt
+- transactions: id, type, accountId, currencyCode, category, occurredAt, createdAt, updatedAt
+
+Use integer cents for all money values.
+
+6. Formatting
+- Format USD as $1,234.56
+- Format BRL as R$1.234,56
+- Dates should be readable and simple
+
+7. Navigation
+Use mobile bottom navigation with:
+- Dashboard
+- Transactions
+- Accounts
+- More
+
+8. Default seed data
+On first load, create sample accounts and sample transactions so the UI is not empty.
+Example accounts:
+- Chase Checking, USD
+- Cash Wallet, USD
+- Brazil Investments, BRL
+
+9. UX details
+- Adding a transaction should be fast.
+- Use modal, drawer, or simple form page.
+- Required fields should validate.
+- Show empty states when there is no data.
+- Make buttons touch-friendly.
+- Make the app usable on desktop too, but mobile-first.
+
+10. Project structure
+Create a clean structure like:
+src/
+  app/
+  components/
+  db/
+  features/
+  pages/
+  utils/
+  types/
+
+11. Deliverable
+Create the full working app.
+Make sure it runs with npm install and npm run dev.
+After building, briefly explain:
+- how to run it
+- where the main files are
+- what features were implemented
+- what the next recommended phase should be
+
+Important:
+Do not spend time building authentication, cloud sync, AI features, charts, bank integrations, or multi-user features in this first version.
+This first version should be stable, beautiful, local-first, and easy to expand.
