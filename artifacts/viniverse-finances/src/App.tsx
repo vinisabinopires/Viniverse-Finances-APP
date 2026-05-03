@@ -13,6 +13,7 @@ import More from "@/pages/More";
 import Recurring from "@/pages/Recurring";
 import Goals from "@/pages/Goals";
 import NetWorth from "@/pages/NetWorth";
+import WeeklyCashflow from "@/pages/WeeklyCashflow";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/recurring" component={Recurring} />
       <Route path="/goals" component={Goals} />
       <Route path="/net-worth" component={NetWorth} />
+      <Route path="/weekly-cashflow" component={WeeklyCashflow} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -35,15 +37,11 @@ function Router() {
 
 function App() {
   const [onboarded, setOnboarded] = useState(() => {
-    if (localStorage.getItem('viniverse-seeded')) {
-      localStorage.setItem('viniverse-onboarded', 'true');
-    }
+    if (localStorage.getItem('viniverse-seeded')) localStorage.setItem('viniverse-onboarded', 'true');
     return !!localStorage.getItem('viniverse-onboarded');
   });
 
-  if (!onboarded) {
-    return <Onboarding onComplete={() => setOnboarded(true)} />;
-  }
+  if (!onboarded) return <Onboarding onComplete={() => setOnboarded(true)} />;
 
   return (
     <QueryClientProvider client={queryClient}>

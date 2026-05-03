@@ -75,6 +75,20 @@ export interface NetWorthSnapshot {
   updatedAt: string;
 }
 
+export interface WeeklyPlan {
+  id: string;
+  weekStartDate: string; // YYYY-MM-DD (Monday)
+  weekEndDate: string;   // YYYY-MM-DD (Sunday)
+  currencyCode: 'USD' | 'BRL';
+  expectedIncomeCents: number;
+  plannedFixedExpensesCents: number;
+  plannedVariableSpendingCents: number;
+  plannedSavingsCents: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RecurringRule {
   id: string;
   name: string;

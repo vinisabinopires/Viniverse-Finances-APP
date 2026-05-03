@@ -1,0 +1,206 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. Inspect the current codebase first and preserve the current React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth tracker, backup/import/export, and current behavior.
+
+Goal of this phase:
+Add a Weekly Cashflow and Paycheck Planner so the user can understand weekly income, weekly spending, upcoming recurring payments, and safe-to-spend money.
+
+Important constraints:
+- Keep everything local-first using IndexedDB/Dexie.
+- Do not add backend, authentication, Firebase, Supabase, or paid APIs.
+- Do not use heavy chart libraries.
+- Do not rebuild the app.
+- Do not break existing data, backups, budgets, recurring rules, goals, net worth snapshots, accounts, or transactions.
+- Do not add another bottom navigation item. Keep this feature accessible from More/Settings.
+- Keep the bottom nav unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+1. Database changes
+Upgrade Dexie safely to the next schema version and add a weeklyPlans table.
+
+WeeklyPlan fields:
+- id
+- weekStartDate: YYYY-MM-DD
+- weekEndDate: YYYY-MM-DD
+- currencyCode: USD or BRL
+- expectedIncomeCents
+- plannedFixedExpensesCents
+- plannedVariableSpendingCents
+- plannedSavingsCents
+- notes optional
+- createdAt
+- updatedAt
+
+Important:
+- Existing data must continue working.
+- Existing backups without weeklyPlans must still import correctly.
+- Clear All Data must clear weeklyPlans too.
+- Backup export/import must include weeklyPlans.
+
+2. Weekly Cashflow page
+Create a new page called Weekly Cashflow.
+
+Do not add it to bottom nav.
+Instead:
+- Add a card/button in More/Settings: “Weekly Cashflow”
+- Clicking it navigates to /weekly-cashflow
+
+The page should show:
+
+A) Week selector
+- Previous week
+- Current selected week label
+- Next week
+- Default to the current week
+- Use a clean mobile-friendly selector
+
+B) Currency selector
+- USD
+- BRL
+- Do not mix USD and BRL in weekly calculations
+- User can switch currency
+
+C) Weekly summary cards
+For the selected week and currency, show:
+- Actual income this week
+- Actual expenses this week
+- Actual net cashflow
+- Planned income
+- Planned fixed expenses
+- Planned variable spending
+- Planned savings
+- Projected remaining amount
+
+Calculation:
+actualIncome = income transactions in selected week and currency
+actualExpenses = expense transactions in selected week and currency
+actualNet = actualIncome - actualExpenses
+
+plannedTotalOut = plannedFixedExpenses + plannedVariableSpending + plannedSavings
+projectedRemaining = expectedIncome - plannedTotalOut
+
+D) Safe-to-spend section
+Show:
+- Variable spending planned
+- Variable spending already used this week
+- Remaining variable spending
+- Remaining days in the selected week
+- Safe daily spending estimate
+
+Rules:
+- Use EXPENSE transactions for the selected week and currency.
+- For now, treat all expenses except categories like Rent, Housing, Subscriptions, Phone, Internet, Gas, Insurance, Health, Education as variable spending only if they are not fixed-like categories.
+- Keep this simple and explain it visually as an estimate.
+
+3. Weekly Plan form
+Add a form to create/edit the plan for the selected week and selected currency.
+
+Fields:
+- expected income
+- planned fixed expenses
+- planned variable spending
+- planned savings
+- notes optional
+
+Behavior:
+- If a plan already exists for that week and currency, edit/update it.
+- If no plan exists, create it.
+- Show a clear button:
+  “Save Weekly Plan”
+- Show success feedback/toast.
+
+4. Upcoming recurring section
+On the Weekly Cashflow page, show recurring rules due during the selected week.
+
+Show:
+- recurring name
+- amount
+- type
+- category
+- due date
+- account
+- active/inactive status
+
+Rules:
+- Only active rules should appear in the main upcoming list.
+- If a generated transaction already exists for that occurrence, show a subtle “Generated” badge.
+- If not generated yet, show “Pending”.
+- Add a button:
+  “Generate due transactions for this week”
+- Use existing recurring generation logic or create a safe helper.
+- Prevent duplicates using recurringOccurrenceKey.
+
+5. Weekly transactions section
+Show transactions for the selected week and currency.
+
+Features:
+- List income and expenses
+- Show recurring badge when applicable
+- Tapping a transaction should reuse the existing transaction detail drawer if possible
+- Empty state if no transactions exist
+
+6. Dashboard integration
+Add a compact “This Week” section to the Dashboard.
+
+Show:
+- selected/current week actual income
+- actual expenses
+- net
+- safe-to-spend remaining estimate if a weekly plan exists
+- small CTA: “View Weekly Cashflow”
+
+Keep it compact so the Dashboard stays clean.
+
+7. More/Settings integration
+In More/Settings, update the Features section to include:
+- Recurring Transactions
+- Financial Goals
+- Net Worth Tracker
+- Weekly Cashflow
+
+Use polished glassmorphism cards.
+
+8. Backup/import/export
+Update backup export/import to include weeklyPlans.
+Use backup version 6 if needed.
+Import validation must handle:
+- old backups without budgets, recurringRules, financialGoals, netWorthSnapshots, or weeklyPlans
+- backups with all current data
+- invalid JSON safely without breaking the app
+
+9. UI polish
+- Keep the dark iOS-like glassmorphism style.
+- The Weekly Cashflow page should feel practical and premium.
+- Use compact cards and readable numbers.
+- Use simple progress bars where useful.
+- Forms should be comfortable on mobile.
+- Avoid clutter.
+
+10. Testing
+Run TypeScript checks and fix all errors.
+Check console logs and fix runtime errors.
+
+Manually verify:
+- More → Weekly Cashflow opens /weekly-cashflow
+- Week selector works
+- Currency selector works
+- Create a weekly plan for USD
+- Edit the same weekly plan
+- Actual income/expenses match transactions for the selected week
+- Safe-to-spend estimate appears
+- Upcoming recurring rules for the week appear
+- Generate due transactions for the week works
+- Running generation again does not duplicate transactions
+- Weekly transactions list updates
+- Dashboard shows “This Week”
+- Export includes weeklyPlans and version 6
+- Import restores weeklyPlans
+- Clear All Data removes weeklyPlans too
+- Existing Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Dashboard, and More still work
+
+Deliverable:
+At the end, summarize:
+- files created
+- files updated
+- database schema changes
+- weekly cashflow behavior
+- backup/import changes
+- what I should test manually next

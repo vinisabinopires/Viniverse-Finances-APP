@@ -7,15 +7,23 @@ import { MonthSelector } from "@/components/MonthSelector";
 import { TransactionCard } from "@/components/TransactionCard";
 import {
   useLiveAccounts, useLiveTransactions, useLiveBudgets, useLiveRecurringRules,
-  useLiveGoals, useLiveSnapshots, calcBudgetSpent, calcNetWorth, getNextOccurrenceAfter,
+  useLiveGoals, useLiveSnapshots, useLiveWeeklyPlans,
+  calcBudgetSpent, calcNetWorth, getNextOccurrenceAfter,
+  getWeekStartDate, getWeekEndDate, toDateStr,
 } from "@/hooks/use-finance";
 import { formatMoney, formatDate, formatFrequency } from "@/utils";
 import { motion } from "framer-motion";
 import {
-  ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw,
+  ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw, BarChart2, Zap,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import type { Transaction } from "@/types";
+
+const FIXED_CATEGORIES = new Set([
+  'rent', 'housing', 'mortgage', 'subscription', 'subscriptions',
+  'phone', 'internet', 'utilities', 'electricity', 'water', 'gas',
+  'insurance', 'health', 'healthcare', 'education', 'loan', 'loans', 'debt',
+]);
 
 function getBudgetStatus(pct: number) {
   if (pct >= 100) return { label: "Over Budget", color: "rose"    } as const;
@@ -34,52 +42,42 @@ export default function Dashboard() {
   const recurringRules = useLiveRecurringRules();
   const goals          = useLiveGoals();
   const snapshots      = useLiveSnapshots();
+  const weeklyPlans    = useLiveWeeklyPlans();
 
+  // ─── Month ────────────────────────────────────────────────────────────────
   const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
   const currentMonthTx = transactions.filter((t) => {
     const d = new Date(t.occurredAt);
     return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear();
   });
-
-  const monthIncome  = currentMonthTx.filter((t) => t.type === "INCOME").reduce((a, t)  => a + t.amountCents, 0);
+  const monthIncome  = currentMonthTx.filter((t) => t.type === "INCOME").reduce((a, t) => a + t.amountCents, 0);
   const monthExpense = currentMonthTx.filter((t) => t.type === "EXPENSE").reduce((a, t) => a + t.amountCents, 0);
+  const totalBar     = monthIncome + monthExpense || 1;
 
-  // Net worth (live from accounts)
+  // ─── Net worth ────────────────────────────────────────────────────────────
   const { totalUsdCents, totalBrlCents } = calcNetWorth(accounts, transactions);
-  const latestSnapshot = snapshots[0] ?? null; // already sorted newest-first
+  const latestSnapshot = snapshots[0] ?? null;
 
-  // Balance card computations (same as net worth, surfaced separately for the balance card)
-  const totalUsdBalance = totalUsdCents;
-  const totalBrlBalance = totalBrlCents;
+  // ─── This week (USD) ──────────────────────────────────────────────────────
+  const today        = new Date();
+  const weekStart    = getWeekStartDate(today);
+  const weekEnd      = getWeekEndDate(today);
+  const weekStartStr = toDateStr(weekStart);
+  const weekEndStr   = toDateStr(weekEnd);
+  const weekTxUsd    = transactions.filter((t) => {
+    const d = t.occurredAt.slice(0, 10);
+    return d >= weekStartStr && d <= weekEndStr && t.currencyCode === 'USD';
+  });
+  const weekIncome   = weekTxUsd.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amountCents, 0);
+  const weekExpenses = weekTxUsd.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amountCents, 0);
+  const weekNet      = weekIncome - weekExpenses;
+  const weekPlan     = weeklyPlans.find((p) => p.weekStartDate === weekStartStr && p.currencyCode === 'USD');
+  const weekVarUsed  = weekTxUsd.filter((t) => t.type === 'EXPENSE' && !FIXED_CATEGORIES.has(t.category.toLowerCase())).reduce((s, t) => s + t.amountCents, 0);
+  const weekVarRemaining = weekPlan ? Math.max(weekPlan.plannedVariableSpendingCents - weekVarUsed, 0) : null;
+  const weekDaysLeft = Math.max(Math.ceil((weekEnd.getTime() - today.getTime()) / 86400000), 1);
+  const weekSafeDaily = weekVarRemaining != null && weekDaysLeft > 0 ? Math.floor(weekVarRemaining / weekDaysLeft) : null;
 
-  const categoryTotals = currentMonthTx.filter((t) => t.type === "EXPENSE").reduce<Record<string, number>>((acc, t) => {
-    acc[t.category] = (acc[t.category] || 0) + t.amountCents; return acc;
-  }, {});
-  const topCategories     = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const maxCategoryAmount = topCategories[0]?.[1] || 1;
-  const totalBar          = monthIncome + monthExpense || 1;
-  const incomeBarPct      = Math.round((monthIncome / totalBar) * 100);
-  const expenseBarPct     = Math.round((monthExpense / totalBar) * 100);
-  const recentTransactions = currentMonthTx.slice(0, 5);
-
-  // Budget Watch
-  const monthBudgets = budgets
-    .filter((b) => b.month === currentMonth)
-    .map((b) => ({ budget: b, spent: calcBudgetSpent(transactions, b.category, b.month, b.currencyCode), pct: 0 }))
-    .map((x) => ({ ...x, pct: Math.round((x.spent / x.budget.monthlyLimitCents) * 100) }))
-    .sort((a, b) => b.pct - a.pct).slice(0, 5);
-
-  // Recurring Watch — upcoming within 14 days
-  const today = new Date();
-  const in14  = new Date(today); in14.setDate(today.getDate() + 14);
-  const upcomingRecurring = recurringRules
-    .filter((r) => r.isActive)
-    .map((r) => ({ rule: r, nextDue: getNextOccurrenceAfter(r, today) }))
-    .filter((x): x is { rule: typeof x.rule; nextDue: Date } => x.nextDue !== null && x.nextDue <= in14)
-    .sort((a, b) => a.nextDue.getTime() - b.nextDue.getTime())
-    .slice(0, 5);
-
-  // Goals Progress
+  // ─── Goals ────────────────────────────────────────────────────────────────
   const activeGoals = goals.filter((g) => !g.isArchived);
   const dashGoals = [
     ...activeGoals.filter((g) => g.goalType === "EMERGENCY_FUND"),
@@ -88,13 +86,35 @@ export default function Dashboard() {
       .sort((a, b) => b.pct - a.pct).map((x) => x.g),
   ].slice(0, 3);
 
+  // ─── Recurring ────────────────────────────────────────────────────────────
+  const in14 = new Date(today); in14.setDate(today.getDate() + 14);
+  const upcomingRecurring = recurringRules
+    .filter((r) => r.isActive)
+    .map((r) => ({ rule: r, nextDue: getNextOccurrenceAfter(r, today) }))
+    .filter((x): x is { rule: typeof x.rule; nextDue: Date } => x.nextDue !== null && x.nextDue <= in14)
+    .sort((a, b) => a.nextDue.getTime() - b.nextDue.getTime())
+    .slice(0, 5);
+
+  // ─── Budgets ──────────────────────────────────────────────────────────────
+  const monthBudgets = budgets
+    .filter((b) => b.month === currentMonth)
+    .map((b) => ({ budget: b, spent: calcBudgetSpent(transactions, b.category, b.month, b.currencyCode), pct: 0 }))
+    .map((x) => ({ ...x, pct: Math.round((x.spent / x.budget.monthlyLimitCents) * 100) }))
+    .sort((a, b) => b.pct - a.pct).slice(0, 5);
+
+  // ─── Top categories ───────────────────────────────────────────────────────
+  const categoryTotals = currentMonthTx.filter((t) => t.type === "EXPENSE").reduce<Record<string, number>>((acc, t) => {
+    acc[t.category] = (acc[t.category] || 0) + t.amountCents; return acc;
+  }, {});
+  const topCategories     = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const maxCategoryAmount = topCategories[0]?.[1] || 1;
+  const recentTransactions = currentMonthTx.slice(0, 5);
+
   return (
     <Layout>
       <div className="p-4 space-y-5 pb-6">
         <header className="pt-8 pb-2">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
-            Viniverse
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">Viniverse</h1>
           <p className="text-muted-foreground text-sm mt-1">Your finances, under control.</p>
         </header>
 
@@ -106,94 +126,84 @@ export default function Dashboard() {
           <div className="relative z-10">
             <p className="text-sm font-medium text-muted-foreground mb-1">Total Balance</p>
             <div className="flex flex-col gap-1 mb-6">
-              <h2 className="text-4xl font-bold tracking-tight">{formatMoney(totalUsdBalance, "USD")}</h2>
-              {totalBrlBalance !== 0 && <p className="text-sm text-muted-foreground font-medium">+ {formatMoney(totalBrlBalance, "BRL")}</p>}
+              <h2 className="text-4xl font-bold tracking-tight">{formatMoney(totalUsdCents, "USD")}</h2>
+              {totalBrlCents !== 0 && <p className="text-sm text-muted-foreground font-medium">+ {formatMoney(totalBrlCents, "BRL")}</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center gap-1.5 text-emerald-400 mb-1"><ArrowDownRight className="w-4 h-4" /><span className="text-xs font-medium">Income</span></div>
-                <p className="text-lg font-semibold">{formatMoney(monthIncome, "USD")}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 text-rose-400 mb-1"><ArrowUpRight className="w-4 h-4" /><span className="text-xs font-medium">Expenses</span></div>
-                <p className="text-lg font-semibold">{formatMoney(monthExpense, "USD")}</p>
-              </div>
+              <div><div className="flex items-center gap-1.5 text-emerald-400 mb-1"><ArrowDownRight className="w-4 h-4" /><span className="text-xs font-medium">Income</span></div><p className="text-lg font-semibold">{formatMoney(monthIncome, "USD")}</p></div>
+              <div><div className="flex items-center gap-1.5 text-rose-400 mb-1"><ArrowUpRight className="w-4 h-4" /><span className="text-xs font-medium">Expenses</span></div><p className="text-lg font-semibold">{formatMoney(monthExpense, "USD")}</p></div>
             </div>
             {(monthIncome > 0 || monthExpense > 0) && (
               <div className="mt-5 space-y-2">
                 <div className="flex gap-1.5 h-2 rounded-full overflow-hidden bg-white/5">
-                  {monthIncome  > 0 && <div className="bg-emerald-500/70 rounded-full transition-all duration-700" style={{ width: `${incomeBarPct}%` }} />}
-                  {monthExpense > 0 && <div className="bg-rose-500/70 rounded-full transition-all duration-700" style={{ width: `${expenseBarPct}%` }} />}
+                  {monthIncome  > 0 && <div className="bg-emerald-500/70 rounded-full" style={{ width: `${Math.round((monthIncome / totalBar) * 100)}%` }} />}
+                  {monthExpense > 0 && <div className="bg-rose-500/70 rounded-full"    style={{ width: `${Math.round((monthExpense / totalBar) * 100)}%` }} />}
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{incomeBarPct}% income</span><span>{expenseBarPct}% expenses</span>
+                  <span>{Math.round((monthIncome / totalBar) * 100)}% income</span>
+                  <span>{Math.round((monthExpense / totalBar) * 100)}% expenses</span>
                 </div>
               </div>
             )}
           </div>
         </motion.div>
 
-        {/* Net Worth compact */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="glass-card p-5 rounded-2xl" data-testid="card-net-worth">
+        {/* This Week */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="glass-card p-5 rounded-2xl" data-testid="card-this-week">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Net Worth</h3>
+              <BarChart2 className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">This Week · USD</h3>
             </div>
-            <Link href="/net-worth" className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
-              View <ChevronRight className="w-3 h-3" />
-            </Link>
+            <Link href="/weekly-cashflow" className="text-xs text-primary hover:text-primary/80 flex items-center gap-0.5">View <ChevronRight className="w-3 h-3" /></Link>
           </div>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <p className="text-[10px] text-muted-foreground mb-0.5">🇺🇸 USD</p>
-              <p className={`text-lg font-bold tabular-nums ${totalUsdCents < 0 ? "text-rose-400" : ""}`}>
-                {formatMoney(totalUsdCents, "USD")}
-              </p>
-            </div>
-            {totalBrlCents !== 0 && (
-              <div>
-                <p className="text-[10px] text-muted-foreground mb-0.5">🇧🇷 BRL</p>
-                <p className={`text-lg font-bold tabular-nums ${totalBrlCents < 0 ? "text-rose-400" : ""}`}>
-                  {formatMoney(totalBrlCents, "BRL")}
-                </p>
-              </div>
-            )}
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div><p className="text-[10px] text-emerald-400 mb-0.5">Income</p><p className="text-sm font-bold text-emerald-400 tabular-nums">{formatMoney(weekIncome, "USD")}</p></div>
+            <div><p className="text-[10px] text-rose-400 mb-0.5">Expenses</p><p className="text-sm font-bold text-rose-400 tabular-nums">{formatMoney(weekExpenses, "USD")}</p></div>
+            <div><p className="text-[10px] text-muted-foreground mb-0.5">Net</p><p className={`text-sm font-bold tabular-nums ${weekNet >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{weekNet >= 0 ? "+" : ""}{formatMoney(weekNet, "USD")}</p></div>
           </div>
-          {latestSnapshot ? (
-            <div className="flex items-center gap-1.5">
-              {latestSnapshot.totalConvertedToUsdCents != null && (
-                <p className="text-xs text-indigo-400 font-medium">
-                  ≈ {formatMoney(latestSnapshot.totalConvertedToUsdCents, "USD")} consolidated ·
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Snapshot {formatDate(latestSnapshot.snapshotDate)}
-              </p>
+          {weekSafeDaily != null ? (
+            <div className="flex items-center gap-2 text-xs">
+              <Zap className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-muted-foreground">Safe daily spend:</span>
+              <span className="font-semibold text-indigo-400">{formatMoney(weekSafeDaily, "USD")}/day</span>
+              <span className="text-muted-foreground">· {weekDaysLeft}d left</span>
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
-              <Link href="/net-worth" className="text-primary hover:underline">Create a snapshot</Link> to track growth over time.
+              <Link href="/weekly-cashflow" className="text-primary hover:underline">Set up a weekly plan</Link> to see safe-to-spend.
             </p>
           )}
         </motion.div>
 
-        {/* Goals Progress */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="glass-card p-5 rounded-2xl" data-testid="card-goals-progress">
+        {/* Net Worth */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="glass-card p-5 rounded-2xl" data-testid="card-net-worth">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Goals Progress</h3>
-            </div>
-            <Link href="/goals" className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
-              All <ChevronRight className="w-3 h-3" />
-            </Link>
+            <div className="flex items-center gap-2"><TrendingUp className="w-4 h-4 text-muted-foreground" /><h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Net Worth</h3></div>
+            <Link href="/net-worth" className="text-xs text-primary hover:text-primary/80 flex items-center gap-0.5">View <ChevronRight className="w-3 h-3" /></Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div><p className="text-[10px] text-muted-foreground mb-0.5">🇺🇸 USD</p><p className={`text-lg font-bold tabular-nums ${totalUsdCents < 0 ? "text-rose-400" : ""}`}>{formatMoney(totalUsdCents, "USD")}</p></div>
+            {totalBrlCents !== 0 && <div><p className="text-[10px] text-muted-foreground mb-0.5">🇧🇷 BRL</p><p className={`text-lg font-bold tabular-nums ${totalBrlCents < 0 ? "text-rose-400" : ""}`}>{formatMoney(totalBrlCents, "BRL")}</p></div>}
+          </div>
+          {latestSnapshot ? (
+            <p className="text-xs text-muted-foreground">
+              {latestSnapshot.totalConvertedToUsdCents != null && <span className="text-indigo-400 font-medium">≈ {formatMoney(latestSnapshot.totalConvertedToUsdCents, "USD")} consolidated · </span>}
+              Snapshot {formatDate(latestSnapshot.snapshotDate)}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground"><Link href="/net-worth" className="text-primary hover:underline">Create a snapshot</Link> to track growth over time.</p>
+          )}
+        </motion.div>
+
+        {/* Goals */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass-card p-5 rounded-2xl" data-testid="card-goals-progress">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2"><Target className="w-4 h-4 text-muted-foreground" /><h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Goals Progress</h3></div>
+            <Link href="/goals" className="text-xs text-primary hover:text-primary/80 flex items-center gap-0.5">All <ChevronRight className="w-3 h-3" /></Link>
           </div>
           {dashGoals.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-3">
-              No goals yet.{" "}
-              <Link href="/goals" className="text-primary hover:underline">Create your first financial goal.</Link>
-            </p>
+            <p className="text-xs text-muted-foreground text-center py-3">No goals yet. <Link href="/goals" className="text-primary hover:underline">Create your first financial goal.</Link></p>
           ) : (
             <div className="space-y-4">
               {dashGoals.map((goal, i) => {
@@ -203,19 +213,11 @@ export default function Dashboard() {
                 return (
                   <motion.div key={goal.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-base leading-none flex-shrink-0">{meta.emoji}</span>
-                        <span className="text-sm font-medium truncate">{goal.name}</span>
-                      </div>
+                      <div className="flex items-center gap-2 min-w-0"><span className="text-base leading-none flex-shrink-0">{meta.emoji}</span><span className="text-sm font-medium truncate">{goal.name}</span></div>
                       <span className={`text-xs font-bold tabular-nums flex-shrink-0 ${pct >= 100 ? "text-yellow-400" : "text-muted-foreground"}`}>{pct}%</span>
                     </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{formatMoney(goal.currentAmountCents, goal.currencyCode)}</span>
-                      <span>{formatMoney(goal.targetAmountCents, goal.currencyCode)}</span>
-                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden"><div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} /></div>
+                    <div className="flex justify-between text-xs text-muted-foreground"><span>{formatMoney(goal.currentAmountCents, goal.currencyCode)}</span><span>{formatMoney(goal.targetAmountCents, goal.currencyCode)}</span></div>
                   </motion.div>
                 );
               })}
@@ -223,16 +225,11 @@ export default function Dashboard() {
           )}
         </motion.div>
 
-        {/* Recurring Watch */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass-card p-5 rounded-2xl" data-testid="card-recurring-watch">
+        {/* Upcoming Recurring */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} className="glass-card p-5 rounded-2xl" data-testid="card-recurring-watch">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Upcoming Recurring</h3>
-            </div>
-            <Link href="/recurring" className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
-              All <ChevronRight className="w-3 h-3" />
-            </Link>
+            <div className="flex items-center gap-2"><RefreshCw className="w-4 h-4 text-muted-foreground" /><h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Upcoming Recurring</h3></div>
+            <Link href="/recurring" className="text-xs text-primary hover:text-primary/80 flex items-center gap-0.5">All <ChevronRight className="w-3 h-3" /></Link>
           </div>
           {upcomingRecurring.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-3">No recurring transactions due in the next 14 days.</p>
@@ -243,17 +240,10 @@ export default function Dashboard() {
                 const daysUntil = Math.ceil((nextDue.getTime() - today.getTime()) / 86400000);
                 return (
                   <div key={rule.id} className="flex items-center gap-3 py-2 px-1">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${isIncome ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
-                      {isIncome ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{rule.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(nextDue.toISOString())} · {formatFrequency(rule.frequency)}</p>
-                    </div>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${isIncome ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>{isIncome ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}</div>
+                    <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{rule.name}</p><p className="text-xs text-muted-foreground">{formatDate(nextDue.toISOString())} · {formatFrequency(rule.frequency)}</p></div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`text-sm font-semibold ${isIncome ? "text-emerald-400" : "text-rose-400"}`}>
-                        {isIncome ? "+" : "-"}{formatMoney(rule.amountCents, rule.currencyCode)}
-                      </p>
+                      <p className={`text-sm font-semibold ${isIncome ? "text-emerald-400" : "text-rose-400"}`}>{isIncome ? "+" : "-"}{formatMoney(rule.amountCents, rule.currencyCode)}</p>
                       <p className="text-[10px] text-muted-foreground">{daysUntil === 0 ? "Today" : `in ${daysUntil}d`}</p>
                     </div>
                   </div>
@@ -264,43 +254,22 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Budget Watch */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} className="glass-card p-5 rounded-2xl" data-testid="card-budget-watch">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }} className="glass-card p-5 rounded-2xl" data-testid="card-budget-watch">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Budget Watch</h3>
-            </div>
-            <Link href="/budgets" className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
-              All <ChevronRight className="w-3 h-3" />
-            </Link>
+            <div className="flex items-center gap-2"><Target className="w-4 h-4 text-muted-foreground" /><h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Budget Watch</h3></div>
+            <Link href="/budgets" className="text-xs text-primary hover:text-primary/80 flex items-center gap-0.5">All <ChevronRight className="w-3 h-3" /></Link>
           </div>
           {monthBudgets.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                No budgets for this month.{" "}
-                <Link href="/budgets" className="text-primary hover:underline">Create your first budget</Link> to track spending limits.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground text-center py-4 leading-relaxed">No budgets for this month. <Link href="/budgets" className="text-primary hover:underline">Create your first budget</Link> to track spending limits.</p>
           ) : (
             <div className="space-y-4">
               {monthBudgets.map(({ budget, spent, pct }, i) => {
                 const status = getBudgetStatus(pct);
                 return (
                   <motion.div key={budget.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-medium truncate">{budget.category}</span>
-                        <span className={`text-[10px] font-semibold shrink-0 ${textColors[status.color]}`}>{status.label}</span>
-                      </div>
-                      <span className={`text-xs font-medium tabular-nums shrink-0 ${textColors[status.color]}`}>{pct}%</span>
-                    </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-700 ${barColors[status.color]}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{formatMoney(spent, budget.currencyCode)} spent</span>
-                      <span>of {formatMoney(budget.monthlyLimitCents, budget.currencyCode)}</span>
-                    </div>
+                    <div className="flex justify-between items-center"><div className="flex items-center gap-2 min-w-0"><span className="text-sm font-medium truncate">{budget.category}</span><span className={`text-[10px] font-semibold shrink-0 ${textColors[status.color]}`}>{status.label}</span></div><span className={`text-xs font-medium tabular-nums shrink-0 ${textColors[status.color]}`}>{pct}%</span></div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden"><div className={`h-full rounded-full ${barColors[status.color]}`} style={{ width: `${Math.min(pct, 100)}%` }} /></div>
+                    <div className="flex justify-between text-xs text-muted-foreground"><span>{formatMoney(spent, budget.currencyCode)} spent</span><span>of {formatMoney(budget.monthlyLimitCents, budget.currencyCode)}</span></div>
                   </motion.div>
                 );
               })}
@@ -310,21 +279,13 @@ export default function Dashboard() {
 
         {/* Top Expenses */}
         {topCategories.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }} className="glass-card p-5 rounded-2xl" data-testid="card-top-categories">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Top Expenses</h3>
-            </div>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="glass-card p-5 rounded-2xl" data-testid="card-top-categories">
+            <div className="flex items-center gap-2 mb-4"><TrendingUp className="w-4 h-4 text-muted-foreground" /><h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Top Expenses</h3></div>
             <div className="space-y-3">
               {topCategories.map(([category, amount], i) => (
-                <motion.div key={category} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} className="space-y-1" data-testid={`category-bar-${i}`}>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-foreground font-medium">{category}</span>
-                    <span className="text-rose-400 font-medium tabular-nums">-{formatMoney(amount, "USD")}</span>
-                  </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-rose-500/60 to-rose-400/80 rounded-full transition-all duration-700" style={{ width: `${Math.round((amount / maxCategoryAmount) * 100)}%` }} />
-                  </div>
+                <motion.div key={category} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} className="space-y-1">
+                  <div className="flex justify-between items-center text-sm"><span className="text-foreground font-medium">{category}</span><span className="text-rose-400 font-medium tabular-nums">-{formatMoney(amount, "USD")}</span></div>
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-rose-500/60 to-rose-400/80 rounded-full" style={{ width: `${Math.round((amount / maxCategoryAmount) * 100)}%` }} /></div>
                 </motion.div>
               ))}
             </div>
@@ -336,10 +297,7 @@ export default function Dashboard() {
           <h3 className="font-semibold text-lg mb-3">Recent Transactions</h3>
           <div className="space-y-2">
             {recentTransactions.length === 0 ? (
-              <div className="text-center py-10 glass-card rounded-2xl">
-                <p className="text-muted-foreground text-sm">No transactions this month.</p>
-                <p className="text-xs text-muted-foreground mt-1">Tap + to add one.</p>
-              </div>
+              <div className="text-center py-10 glass-card rounded-2xl"><p className="text-muted-foreground text-sm">No transactions this month.</p><p className="text-xs text-muted-foreground mt-1">Tap + to add one.</p></div>
             ) : (
               recentTransactions.map((t, i) => (
                 <motion.div key={t.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}>
