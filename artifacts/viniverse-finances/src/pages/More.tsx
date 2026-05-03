@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { clearAllData, db } from "@/hooks/use-finance";
 import {
   Download, Upload, Trash2, Info, Shield, AlertTriangle,
-  RefreshCw, Target, TrendingUp, BarChart2, ChevronRight,
+  RefreshCw, Target, TrendingUp, BarChart2, ChevronRight, FileBarChart2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -97,7 +97,7 @@ export default function More() {
           </div>
           <div>
             <h3 className="font-semibold">Viniverse – Finances</h3>
-            <p className="text-xs text-muted-foreground">Version 1.6.0 · Personal finance tracker</p>
+            <p className="text-xs text-muted-foreground">Version 1.7.0 · Personal finance tracker</p>
           </div>
         </div>
 
@@ -109,7 +109,8 @@ export default function More() {
               { href: "/recurring",       icon: <RefreshCw className="w-4 h-4 text-indigo-400" />,  bg: "bg-indigo-500/10",  title: "Recurring Transactions", desc: "Automate income and expense rules" },
               { href: "/goals",           icon: <Target     className="w-4 h-4 text-emerald-400" />, bg: "bg-emerald-500/10", title: "Financial Goals",         desc: "Track savings targets and milestones" },
               { href: "/net-worth",       icon: <TrendingUp className="w-4 h-4 text-cyan-400" />,   bg: "bg-cyan-500/10",    title: "Net Worth Tracker",       desc: "Monitor and snapshot financial growth" },
-              { href: "/weekly-cashflow", icon: <BarChart2  className="w-4 h-4 text-violet-400" />, bg: "bg-violet-500/10",  title: "Weekly Cashflow",         desc: "Plan and track money week by week" },
+              { href: "/weekly-cashflow", icon: <BarChart2      className="w-4 h-4 text-violet-400" />,  bg: "bg-violet-500/10",  title: "Weekly Cashflow",  desc: "Plan and track money week by week" },
+              { href: "/reports",         icon: <FileBarChart2 className="w-4 h-4 text-orange-400" />,  bg: "bg-orange-500/10",  title: "Monthly Reports",  desc: "Full breakdown, insights, and trends" },
             ].map(({ href, icon, bg, title, desc }) => (
               <Link key={href} href={href} className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors">
                 <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>{icon}</div>

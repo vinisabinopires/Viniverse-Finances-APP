@@ -1,0 +1,208 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. Inspect the current codebase first and preserve the current React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, backup/import/export, and current behavior.
+
+Goal of this phase:
+Add a Monthly Reports & Insights page that summarizes each selected month with income, expenses, net cashflow, categories, budgets, recurring transactions, weekly breakdowns, and simple financial insights.
+
+Important constraints:
+- Keep everything local-first using IndexedDB/Dexie.
+- Do not add backend, authentication, Firebase, Supabase, or paid APIs.
+- Do not use heavy chart libraries.
+- Prefer computed reports from existing data.
+- Do not create a new database table unless absolutely necessary.
+- Do not rebuild the app.
+- Do not break existing data, backups, budgets, recurring rules, goals, net worth snapshots, weekly plans, accounts, or transactions.
+- Do not add another bottom navigation item.
+- Keep the bottom nav unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+1. Reports page
+Create a new page called Monthly Reports.
+
+Do not add it to bottom nav.
+Instead:
+- Add a card/button in More/Settings: “Monthly Reports”
+- Clicking it navigates to /reports
+
+2. Month and currency selectors
+At the top of the Reports page, add:
+- Month selector using the same style as Dashboard/Transactions
+- Currency selector: USD / BRL
+- All calculations must stay inside the selected currency.
+- Do not mix USD and BRL.
+
+3. Monthly overview
+For selected month and currency, show premium summary cards:
+- Total income
+- Total expenses
+- Net cashflow
+- Savings rate percentage:
+  savingsRate = netCashflow / income
+- Number of transactions
+- Average expense transaction
+- Biggest expense
+- Biggest income
+
+If income is 0, avoid division errors and show savings rate as unavailable.
+
+4. Income vs expenses visual
+Add a simple visual section using CSS/Tailwind only:
+- Income bar
+- Expense bar
+- Net result indicator
+- Show whether the month was positive, neutral, or negative
+
+No heavy chart libraries.
+
+5. Category breakdown
+Add category summaries for expenses:
+- Top expense categories
+- Amount spent per category
+- Percentage of total expenses
+- Simple progress bars
+- Sort highest to lowest
+- Show empty state if no expenses
+
+Also add income category summary:
+- Income by category
+- Amount per category
+- Percentage of income
+
+6. Budget performance
+Use existing budgets for the selected month and currency.
+
+Show:
+- Total budgeted
+- Total spent against budgeted categories
+- Remaining budget
+- Number of safe budgets
+- Number of caution budgets
+- Number of over-budget categories
+
+Then list budget cards:
+- category
+- spent vs limit
+- percentage used
+- status: Safe, Caution, Over
+- progress bar
+
+Rules:
+- Only EXPENSE transactions count.
+- Match category case-insensitively.
+- Match selected month and currency.
+
+7. Weekly breakdown inside the month
+Create a section called Weekly Breakdown.
+
+For each week that overlaps the selected month:
+- Week label
+- Income
+- Expenses
+- Net
+- Transaction count
+- Simple mini bar or net indicator
+
+Use Monday–Sunday week logic consistent with Weekly Cashflow.
+Only include transactions inside the selected month.
+
+8. Recurring summary
+Use existing recurring rules and generated transactions.
+
+Show:
+- Generated recurring income for this month
+- Generated recurring expenses for this month
+- Count of recurring transactions generated
+- Upcoming/pending recurring occurrences within the selected month, if possible
+
+Keep this simple and safe.
+Do not auto-generate anything from the Reports page.
+
+9. Goals and Net Worth snapshot summary
+Add compact sections:
+
+Financial Goals:
+- Show up to 3 active goals
+- Current vs target
+- Progress percentage
+- Emergency Fund first if it exists
+
+Net Worth:
+- Show most recent snapshot before or during selected month, if available
+- Show USD total and BRL total from that snapshot
+- If no snapshot exists, show a prompt to create one from Net Worth page
+
+10. Simple insights engine
+Add a section called Insights.
+
+Generate 3 to 6 simple insights based on the selected month, such as:
+- “Your largest expense category was Housing.”
+- “You spent more than you earned this month.”
+- “You stayed under budget in X categories.”
+- “You exceeded budget in X categories.”
+- “Your savings rate was X%.”
+- “Your biggest single expense was X.”
+- “You had X recurring transactions this month.”
+
+Rules:
+- Keep insights deterministic and based only on current data.
+- No AI API.
+- Do not hallucinate.
+- If there is not enough data, show helpful empty-state guidance.
+
+11. Dashboard integration
+Add a compact “Monthly Snapshot” section on Dashboard.
+
+Show:
+- selected/current month income
+- expenses
+- net
+- savings rate if available
+- small CTA: “View Report”
+
+Keep it compact so the Dashboard does not become cluttered.
+
+12. More/Settings integration
+In More/Settings, update the Features section to include:
+- Recurring Transactions
+- Financial Goals
+- Net Worth Tracker
+- Weekly Cashflow
+- Monthly Reports
+
+Use polished glassmorphism cards.
+
+13. UI polish
+- Keep the dark iOS-like glassmorphism style.
+- Reports page should feel like a premium financial dashboard.
+- Use compact cards and readable numbers.
+- Use simple progress bars and visual hierarchy.
+- Make it comfortable on mobile.
+- Avoid clutter.
+- Make desktop usable too.
+
+14. Testing
+Run TypeScript checks and fix all errors.
+Check console logs and fix runtime errors.
+
+Manually verify:
+- More → Monthly Reports opens /reports
+- Month selector works
+- Currency selector works
+- Income, expenses, net, transaction count are correct
+- Savings rate does not break when income is 0
+- Category breakdown matches transactions
+- Budget performance matches budgets and transactions
+- Weekly breakdown updates by month
+- Recurring summary appears
+- Goals summary appears
+- Net Worth snapshot summary appears when snapshots exist
+- Insights are accurate and do not invent data
+- Dashboard shows Monthly Snapshot
+- Existing Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Dashboard, More, Export, Import, and Clear All Data still work
+
+Deliverable:
+At the end, summarize:
+- files created
+- files updated
+- whether any database schema change was needed
+- report calculations added
+- what I should test manually next

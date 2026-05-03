@@ -11,10 +11,10 @@ import {
   calcBudgetSpent, calcNetWorth, getNextOccurrenceAfter,
   getWeekStartDate, getWeekEndDate, toDateStr,
 } from "@/hooks/use-finance";
-import { formatMoney, formatDate, formatFrequency } from "@/utils";
+import { formatMoney, formatDate, formatFrequency, formatMonthYear } from "@/utils";
 import { motion } from "framer-motion";
 import {
-  ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw, BarChart2, Zap,
+  ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw, BarChart2, Zap, FileBarChart2,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import type { Transaction } from "@/types";
@@ -53,6 +53,13 @@ export default function Dashboard() {
   const monthIncome  = currentMonthTx.filter((t) => t.type === "INCOME").reduce((a, t) => a + t.amountCents, 0);
   const monthExpense = currentMonthTx.filter((t) => t.type === "EXPENSE").reduce((a, t) => a + t.amountCents, 0);
   const totalBar     = monthIncome + monthExpense || 1;
+
+  // USD-only month snapshot (for Monthly Snapshot widget)
+  const monthTxUsd      = currentMonthTx.filter((t) => t.currencyCode === "USD");
+  const monthIncomeUsd  = monthTxUsd.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amountCents, 0);
+  const monthExpenseUsd = monthTxUsd.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amountCents, 0);
+  const monthNetUsd     = monthIncomeUsd - monthExpenseUsd;
+  const savingsRateUsd  = monthIncomeUsd > 0 ? Math.round((monthNetUsd / monthIncomeUsd) * 100) : null;
 
   // ─── Net worth ────────────────────────────────────────────────────────────
   const { totalUsdCents, totalBrlCents } = calcNetWorth(accounts, transactions);
@@ -148,8 +155,35 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
+        {/* Monthly Snapshot */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="glass-card p-5 rounded-2xl" data-testid="card-monthly-snapshot">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FileBarChart2 className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{formatMonthYear(currentMonth + "-01")} · USD</h3>
+            </div>
+            <Link href="/reports" className="text-xs text-primary hover:text-primary/80 flex items-center gap-0.5">Report <ChevronRight className="w-3 h-3" /></Link>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div><p className="text-[10px] text-emerald-400 mb-0.5">Income</p><p className="text-sm font-bold text-emerald-400 tabular-nums">{formatMoney(monthIncomeUsd, "USD")}</p></div>
+            <div><p className="text-[10px] text-rose-400 mb-0.5">Expenses</p><p className="text-sm font-bold text-rose-400 tabular-nums">{formatMoney(monthExpenseUsd, "USD")}</p></div>
+            <div><p className="text-[10px] text-muted-foreground mb-0.5">Net</p><p className={`text-sm font-bold tabular-nums ${monthNetUsd >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{monthNetUsd >= 0 ? "+" : ""}{formatMoney(monthNetUsd, "USD")}</p></div>
+          </div>
+          {savingsRateUsd != null ? (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">Savings rate:</span>
+              <span className={`font-semibold ${savingsRateUsd >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{savingsRateUsd}%</span>
+              <span className="text-muted-foreground ml-auto">{monthTxUsd.length} transactions</span>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              <Link href="/reports" className="text-primary hover:underline">View full report</Link> for detailed breakdown.
+            </p>
+          )}
+        </motion.div>
+
         {/* This Week */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="glass-card p-5 rounded-2xl" data-testid="card-this-week">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="glass-card p-5 rounded-2xl" data-testid="card-this-week">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-muted-foreground" />
