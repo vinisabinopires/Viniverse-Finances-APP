@@ -1,13 +1,13 @@
 import { Account } from "@/types";
 import { formatMoney } from "@/utils";
 import { motion } from "framer-motion";
-import { Landmark, Wallet, TrendingUp, CreditCard, Coins, Trash2 } from "lucide-react";
+import { Landmark, Wallet, TrendingUp, CreditCard, Coins, ChevronRight } from "lucide-react";
 
 interface AccountCardProps {
   account: Account;
   balanceCents: number;
   txCount?: number;
-  onDelete?: () => void;
+  onClick?: () => void;
 }
 
 const typeIcons = {
@@ -26,11 +26,16 @@ const typeLabels: Record<Account["type"], string> = {
   CASH: "Cash",
 };
 
-export function AccountCard({ account, balanceCents, txCount, onDelete }: AccountCardProps) {
+export function AccountCard({ account, balanceCents, txCount, onClick }: AccountCardProps) {
   const Icon = typeIcons[account.type] || Wallet;
 
   return (
-    <div className="glass-card p-5 relative overflow-hidden rounded-2xl" data-testid={`card-account-${account.id}`}>
+    <motion.div
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      data-testid={`card-account-${account.id}`}
+      className="glass-card p-5 relative overflow-hidden rounded-2xl cursor-pointer hover:bg-white/10 active:bg-white/15 transition-colors"
+    >
       <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
 
       <div className="flex justify-between items-start mb-4 relative z-10">
@@ -49,17 +54,7 @@ export function AccountCard({ account, balanceCents, txCount, onDelete }: Accoun
             </div>
           </div>
         </div>
-
-        {onDelete && (
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={onDelete}
-            data-testid={`btn-delete-account-${account.id}`}
-            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </motion.button>
-        )}
+        <ChevronRight className="w-4 h-4 text-muted-foreground/50 mt-1 relative z-10" />
       </div>
 
       <div className="relative z-10">
@@ -73,6 +68,6 @@ export function AccountCard({ account, balanceCents, txCount, onDelete }: Accoun
           </p>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -5,45 +5,63 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { addAccount } from "@/hooks/use-finance";
+import { addAccount, updateAccount } from "@/hooks/use-finance";
+import type { Account } from "@/types";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   type: z.enum(["CHECKING", "SAVINGS", "CASH", "INVESTMENT", "CREDIT_CARD"]),
   currencyCode: z.enum(["USD", "BRL"]),
-  initialBalance: z.string().min(1, "Initial balance is required"),
+  initialBalance: z
+    .string()
+    .min(1, "Required")
+    .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) >= 0, { message: "Enter a valid amount" }),
 });
 
 type FormData = z.infer<typeof schema>;
 
 interface AccountFormProps {
   onSuccess: () => void;
+  editAccount?: Account;
 }
 
-export function AccountForm({ onSuccess }: AccountFormProps) {
+export function AccountForm({ onSuccess, editAccount }: AccountFormProps) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      name: "",
-      type: "CHECKING",
-      currencyCode: "USD",
-      initialBalance: "0",
-    },
+    defaultValues: editAccount
+      ? {
+          name: editAccount.name,
+          type: editAccount.type,
+          currencyCode: editAccount.currencyCode,
+          initialBalance: (editAccount.initialBalanceCents / 100).toFixed(2),
+        }
+      : {
+          name: "",
+          type: "CHECKING",
+          currencyCode: "USD",
+          initialBalance: "0",
+        },
   });
 
   const onSubmit = async (data: FormData) => {
-    await addAccount({
+    const payload = {
       name: data.name,
       type: data.type,
       currencyCode: data.currencyCode,
       initialBalanceCents: Math.round(parseFloat(data.initialBalance) * 100),
-    });
+    };
+
+    if (editAccount) {
+      await updateAccount(editAccount.id, payload);
+    } else {
+      await addAccount(payload);
+    }
     onSuccess();
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         <FormField
           control={form.control}
           name="name"
@@ -51,7 +69,12 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
             <FormItem>
               <FormLabel>Account Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Chase Checking" {...field} className="bg-white/5 border-white/10" />
+                <Input
+                  placeholder="e.g. Chase Checking"
+                  data-testid="input-account-name"
+                  {...field}
+                  className="bg-white/5 border-white/10"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -64,9 +87,9 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Account Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger className="bg-white/5 border-white/10">
+                  <SelectTrigger className="bg-white/5 border-white/10" data-testid="select-account-type">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                 </FormControl>
@@ -91,7 +114,16 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
               <FormItem>
                 <FormLabel>Initial Balance</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="0.00" {...field} className="bg-white/5 border-white/10" />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    data-testid="input-initial-balance"
+                    {...field}
+                    className="bg-white/5 border-white/10"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -104,15 +136,15 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Currency</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger className="bg-white/5 border-white/10">
+                    <SelectTrigger className="bg-white/5 border-white/10" data-testid="select-currency">
                       <SelectValue placeholder="Currency" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="bg-popover border-white/10">
-                    <SelectItem value="USD">USD ($)</SelectItem>
-                    <SelectItem value="BRL">BRL (R$)</SelectItem>
+                    <SelectItem value="USD">USD — US Dollar ($)</SelectItem>
+                    <SelectItem value="BRL">BRL — Real (R$)</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -121,8 +153,12 @@ export function AccountForm({ onSuccess }: AccountFormProps) {
           />
         </div>
 
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 mt-4">
-          Add Account
+        <Button
+          type="submit"
+          data-testid="btn-save-account"
+          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold"
+        >
+          {editAccount ? "Update Account" : "Add Account"}
         </Button>
       </form>
     </Form>

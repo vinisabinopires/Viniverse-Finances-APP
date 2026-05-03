@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { TransactionDrawer } from "@/components/TransactionDrawer";
+import { TransactionDetailDrawer } from "@/components/TransactionDetailDrawer";
 import { MonthSelector } from "@/components/MonthSelector";
 import { TransactionCard } from "@/components/TransactionCard";
 import { useLiveAccounts, useLiveTransactions } from "@/hooks/use-finance";
 import { formatMoney } from "@/utils";
 import { motion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, TrendingUp } from "lucide-react";
+import type { Transaction } from "@/types";
 
 export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const accounts = useLiveAccounts();
   const transactions = useLiveTransactions();
 
@@ -112,7 +115,7 @@ export default function Dashboard() {
 
             {(monthIncome > 0 || monthExpense > 0) && (
               <div className="mt-5 space-y-2">
-                <div className="flex gap-1.5 h-2 rounded-full overflow-hidden">
+                <div className="flex gap-1.5 h-2 rounded-full overflow-hidden bg-white/5">
                   {monthIncome > 0 && (
                     <div
                       className="bg-emerald-500/70 rounded-full transition-all duration-700"
@@ -179,15 +182,13 @@ export default function Dashboard() {
         )}
 
         <div>
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-semibold text-lg">Recent Transactions</h3>
-          </div>
+          <h3 className="font-semibold text-lg mb-3">Recent Transactions</h3>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {recentTransactions.length === 0 ? (
               <div className="text-center py-10 glass-card rounded-2xl">
                 <p className="text-muted-foreground text-sm">No transactions this month.</p>
-                <p className="text-xs text-muted-foreground mt-1">Tap the + button to add one.</p>
+                <p className="text-xs text-muted-foreground mt-1">Tap + to add one.</p>
               </div>
             ) : (
               recentTransactions.map((t, i) => (
@@ -197,14 +198,20 @@ export default function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07 }}
                 >
-                  <TransactionCard transaction={t} />
+                  <TransactionCard transaction={t} onClick={() => setSelectedTx(t)} />
                 </motion.div>
               ))
             )}
           </div>
         </div>
       </div>
+
       <TransactionDrawer />
+      <TransactionDetailDrawer
+        transaction={selectedTx}
+        accounts={accounts}
+        onClose={() => setSelectedTx(null)}
+      />
     </Layout>
   );
 }

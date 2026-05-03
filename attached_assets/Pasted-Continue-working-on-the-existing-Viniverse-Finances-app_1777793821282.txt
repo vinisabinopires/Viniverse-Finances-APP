@@ -1,0 +1,91 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. Inspect the current code first and preserve the current React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, onboarding flow, and current pages.
+
+Goal of this phase:
+Make the app more practical for real daily use by adding complete edit/detail flows for transactions and accounts.
+
+Tasks:
+
+1. Transaction detail and edit flow
+- Make every transaction card tappable/clickable.
+- When the user taps a transaction, open a transaction detail drawer/modal.
+- The detail view should show:
+  - description
+  - amount
+  - type
+  - category
+  - account
+  - date
+  - notes if available
+  - createdAt and updatedAt in a small subtle style
+- Add buttons:
+  - Edit Transaction
+  - Delete Transaction
+- Editing should open the existing transaction form pre-filled with the selected transaction data.
+- Saving should update the existing transaction, not create a duplicate.
+- Deleting should require confirmation.
+
+2. Improve Add Transaction flow
+- After successfully adding a transaction, close the modal/drawer automatically.
+- Show a small success feedback/toast or inline confirmation.
+- Make sure the transaction list and dashboard update instantly after add/edit/delete.
+- Make the amount input mobile-friendly and reliable.
+
+3. Account detail and edit flow
+- Make every account card tappable/clickable.
+- When the user taps an account, open an account detail drawer/modal.
+- The detail view should show:
+  - account name
+  - account type
+  - currency
+  - initial balance
+  - current calculated balance
+  - number of transactions linked to this account
+  - recent transactions from this account
+- Add buttons:
+  - Edit Account
+  - Delete Account
+- Editing should open the existing account form pre-filled.
+- Saving should update the existing account, not create a duplicate.
+- Deleting should keep the current safety warning if the account has transactions.
+
+4. Improve account form
+- Add friendly labels for account types:
+  CHECKING = Checking
+  SAVINGS = Savings
+  CASH = Cash
+  INVESTMENT = Investment
+  CREDIT_CARD = Credit Card
+- Make currency selection clear: USD or BRL.
+- Make initial balance input reliable and mobile-friendly.
+
+5. UX polish
+- Keep the iOS-like dark glassmorphism style.
+- Add subtle pressed/hover states to cards so they feel interactive.
+- Make drawer/modal layout comfortable on mobile.
+- Ensure the floating action button does not cover important content.
+- Ensure bottom navigation spacing is safe on mobile.
+- Keep the app usable on desktop.
+
+6. Data integrity
+- Do not change the database schema unless necessary.
+- If adding fields is necessary, update Dexie version safely.
+- Make sure existing demo/user data continues working.
+- No sample data duplication.
+- No console errors.
+- No TypeScript errors.
+
+7. Testing
+After changes, run the app and verify:
+- Add transaction works.
+- Tap transaction opens details.
+- Edit transaction updates the same transaction.
+- Delete transaction removes it.
+- Dashboard updates after transaction changes.
+- Tap account opens details.
+- Edit account updates the same account.
+- Account balances remain correct.
+- Backup/export/import still works.
+- Clear All Data still requires DELETE.
+
+Deliverable:
+At the end, summarize what changed, what files were touched, and what I should test manually next.

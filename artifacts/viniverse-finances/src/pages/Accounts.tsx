@@ -1,27 +1,16 @@
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
-import { useLiveAccounts, useLiveTransactions, deleteAccount } from "@/hooks/use-finance";
+import { useLiveAccounts, useLiveTransactions } from "@/hooks/use-finance";
 import { AccountCard } from "@/components/AccountCard";
 import { AccountDrawer } from "@/components/AccountDrawer";
+import { AccountDetailDrawer } from "@/components/AccountDetailDrawer";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
 import type { Account } from "@/types";
 
 export default function Accounts() {
   const accounts = useLiveAccounts();
   const transactions = useLiveTransactions();
-  const { toast } = useToast();
-  const [deleteCandidate, setDeleteCandidate] = useState<Account | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
   const getAccountBalance = (accountId: string, initialBalanceCents: number) => {
     const accTx = transactions.filter((t) => t.accountId === accountId);
@@ -33,18 +22,9 @@ export default function Accounts() {
   const getAccountTxCount = (accountId: string) =>
     transactions.filter((t) => t.accountId === accountId).length;
 
-  const handleDeleteRequest = (account: Account) => {
-    setDeleteCandidate(account);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteCandidate) return;
-    await deleteAccount(deleteCandidate.id);
-    setDeleteCandidate(null);
-    toast({ title: "Account deleted", description: `${deleteCandidate.name} has been removed.` });
-  };
-
-  const candidateTxCount = deleteCandidate ? getAccountTxCount(deleteCandidate.id) : 0;
+  const selectedBalance = selectedAccount
+    ? getAccountBalance(selectedAccount.id, selectedAccount.initialBalanceCents)
+    : 0;
 
   return (
     <Layout>
@@ -61,7 +41,7 @@ export default function Accounts() {
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <AnimatePresence>
             {accounts.map((account, i) => {
               const balanceCents = getAccountBalance(account.id, account.initialBalanceCents);
@@ -77,7 +57,7 @@ export default function Accounts() {
                     account={account}
                     balanceCents={balanceCents}
                     txCount={getAccountTxCount(account.id)}
-                    onDelete={() => handleDeleteRequest(account)}
+                    onClick={() => setSelectedAccount(account)}
                   />
                 </motion.div>
               );
@@ -95,33 +75,12 @@ export default function Accounts() {
         </div>
       </div>
 
-      <AlertDialog open={!!deleteCandidate} onOpenChange={(open) => { if (!open) setDeleteCandidate(null); }}>
-        <AlertDialogContent className="bg-background border-white/10 max-w-sm mx-4">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{deleteCandidate?.name}"?</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              {candidateTxCount > 0
-                ? `This account has ${candidateTxCount} transaction${candidateTxCount !== 1 ? "s" : ""}. Deleting it will not remove those transactions, but they will no longer be linked to a valid account.`
-                : "This action cannot be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              className="bg-white/5 border-white/10 hover:bg-white/10 text-foreground"
-              data-testid="btn-cancel-delete-account"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-rose-500 text-white hover:bg-rose-600"
-              data-testid="btn-confirm-delete-account"
-            >
-              Delete Account
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AccountDetailDrawer
+        account={selectedAccount}
+        balanceCents={selectedBalance}
+        transactions={transactions}
+        onClose={() => setSelectedAccount(null)}
+      />
     </Layout>
   );
 }

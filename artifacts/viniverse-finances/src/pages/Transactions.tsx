@@ -1,12 +1,14 @@
 import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
-import { useLiveTransactions } from "@/hooks/use-finance";
+import { useLiveAccounts, useLiveTransactions } from "@/hooks/use-finance";
 import { TransactionCard } from "@/components/TransactionCard";
+import { TransactionDetailDrawer } from "@/components/TransactionDetailDrawer";
 import { MonthSelector } from "@/components/MonthSelector";
 import { motion, AnimatePresence } from "framer-motion";
 import { TransactionDrawer } from "@/components/TransactionDrawer";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
+import type { Transaction } from "@/types";
 
 type FilterType = "ALL" | "INCOME" | "EXPENSE";
 
@@ -14,7 +16,9 @@ export default function Transactions() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterType, setFilterType] = useState<FilterType>("ALL");
   const [search, setSearch] = useState("");
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const transactions = useLiveTransactions();
+  const accounts = useLiveAccounts();
 
   const currentMonthTransactions = transactions.filter((t) => {
     const tDate = new Date(t.occurredAt);
@@ -59,9 +63,9 @@ export default function Transactions() {
         <MonthSelector currentDate={currentDate} onChange={setCurrentDate} />
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search by description, category, notes..."
+            placeholder="Search description, category, notes…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             data-testid="input-search-transactions"
@@ -111,11 +115,11 @@ export default function Transactions() {
           )}
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-          <span>{filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? "s" : ""}</span>
+        <div className="text-xs text-muted-foreground px-1">
+          {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? "s" : ""}
         </div>
 
-        <div className="space-y-3 pb-8">
+        <div className="space-y-2 pb-8">
           <AnimatePresence mode="popLayout">
             {filteredTransactions.length === 0 ? (
               <motion.div
@@ -145,14 +149,20 @@ export default function Transactions() {
                   exit={{ opacity: 0, scale: 0.97 }}
                   transition={{ delay: Math.min(i * 0.04, 0.3) }}
                 >
-                  <TransactionCard transaction={t} />
+                  <TransactionCard transaction={t} onClick={() => setSelectedTx(t)} />
                 </motion.div>
               ))
             )}
           </AnimatePresence>
         </div>
       </div>
+
       <TransactionDrawer />
+      <TransactionDetailDrawer
+        transaction={selectedTx}
+        accounts={accounts}
+        onClose={() => setSelectedTx(null)}
+      />
     </Layout>
   );
 }
