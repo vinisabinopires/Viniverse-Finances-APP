@@ -1,0 +1,258 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.8 — Final QA, Polish & Editable Menu Order.
+
+Important direction:
+Do NOT add CSV export, PDF export, cloud sync, biometric auth, bank integrations, external APIs, AI APIs, duplicate calendar views, or bottom navigation changes in this phase.
+Do NOT change the database schema unless absolutely necessary.
+This phase is focused on final app polish, quality assurance, UI consistency, and editable order for the More/Settings menu items.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, subscriptions, transfers, financial goals, net worth snapshots, weekly cashflow, monthly reports, cashflow calendar, quick templates, transfer insights, budget coach, savings runway, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Finalize and polish the app for daily use, while adding a customizable order for the feature items shown in the More/Settings menu.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not change bottom navigation:
+  Home / Transactions / Budgets / Accounts / More
+- Do not break existing data.
+- Do not break backup/import/export.
+- Do not change database schema.
+- Use localStorage for UI preferences.
+- Do not include menu order preferences in JSON backup/export.
+- Do not remove any existing feature links.
+
+1. Editable More/Settings menu order
+In the More/Settings page, make the order of feature menu items editable.
+
+Feature items likely include:
+- Real Life Setup
+- Recurring Transactions
+- Quick Add Templates
+- Cashflow Calendar
+- Budget Coach
+- Subscription Center
+- Transfers
+- Financial Goals
+- Net Worth Tracker
+- Weekly Cashflow
+- Monthly Reports
+- Any other existing feature cards in the More/Settings Features list
+
+Behavior:
+- Add a small button near the Features section header:
+  "Edit Order"
+- When edit mode is active:
+  - feature cards stay visible
+  - each card shows move up/down controls
+  - optionally show a drag handle icon, but do not require drag-and-drop
+  - "Done" button exits edit mode
+  - "Reset" button restores default order
+- Store custom order in localStorage.
+
+Suggested localStorage key:
+- viniverse-more-feature-order-v1
+
+Data format:
+- array of stable feature ids
+
+Example:
+[
+  "budget-coach",
+  "subscriptions",
+  "transfers",
+  "calendar",
+  "quick-templates"
+]
+
+Rules:
+- Use stable ids, not titles.
+- If a new feature exists but is not in saved order, append it to the end.
+- If saved order contains an old/missing id, ignore it.
+- Reset removes the localStorage key and restores default order.
+- Do not include this preference in backup/export/import.
+
+2. More/Settings polish
+Improve the More/Settings page without redesigning it.
+
+Check:
+- feature list spacing
+- section headers
+- version display
+- data safety notes
+- PIN/security section
+- backup/import/export section
+- clear-all warning language
+- touch targets
+- safe-area bottom padding
+
+Keep visual style consistent with the rest of the app.
+
+3. Final navigation audit
+Verify all routes still work:
+- /
+- /transactions
+- /budgets
+- /accounts
+- /more
+- /setup
+- /recurring
+- /quick-templates
+- /calendar
+- /coach
+- /subscriptions
+- /transfers
+- /goals
+- /net-worth
+- /weekly-cashflow
+- /reports
+
+Fix any broken links, wrong labels, duplicated labels, or inconsistent subtitles.
+
+4. Dialog and drawer accessibility polish
+Fix the pre-existing shadcn/Radix warning if possible:
+- Missing Description for DialogContent
+
+Search for:
+- DialogContent
+- AlertDialogContent
+- DrawerContent
+
+For Dialog/AlertDialog:
+- Add a DialogDescription or AlertDialogDescription where appropriate
+- If description should be visually hidden, use a small muted description or screen-reader-only text if available
+- Do not overcomplicate
+
+For DrawerContent:
+- Do not break mobile scroll fixes
+- Preserve the pattern:
+  DrawerContent flex flex-col max-h-[92dvh]
+  inner flex-1 overflow-y-auto wrapper
+  safe-area bottom padding
+
+5. SelectItem safety audit
+Scan all Radix SelectItem usage again.
+
+Make sure no SelectItem uses:
+- value=""
+- undefined
+- null
+- potentially empty dynamic value
+
+Use sentinel values when needed:
+- "__none__"
+- "__all__"
+- "__custom__"
+
+Map sentinel values back to internal app state where needed.
+
+Do not change business logic.
+
+6. Dashboard final polish audit
+Review Dashboard after all added cards.
+
+Make sure:
+- no card feels duplicated
+- cards have consistent spacing
+- Quick Actions still work
+- Quick Templates still work
+- Transfer button still works
+- Fixed Commitments card is not too noisy
+- Savings Runway card is not too noisy
+- Budget Coach alerts card is compact
+- Upcoming Bills card works
+- empty states are useful
+- Dashboard remains readable on mobile
+
+Do not remove functionality.
+Only make small spacing/copy/order improvements if needed.
+
+7. Financial logic regression audit
+Verify that:
+- transfers do not count as income
+- transfers do not count as expenses
+- transfers do not affect budgets
+- transfers do affect account balances
+- transfers do affect net worth through balances
+- recurring generation does not duplicate occurrences
+- fixed commitments use only active recurring EXPENSE rules
+- recurring income is not shown as subscription/fixed bill
+- Budget Coach uses selected currency only
+- Savings Runway uses selected currency only
+- USD and BRL are not mixed unless clearly labeled and manually converted in existing net worth logic
+
+Do not rewrite major logic unless a clear bug is found.
+
+8. Empty state polish
+Check empty states across:
+- Dashboard
+- Transactions
+- Accounts
+- Budgets
+- Recurring
+- Quick Templates
+- Cashflow Calendar
+- Budget Coach
+- Subscriptions
+- Transfers
+- Goals
+- Net Worth
+- Weekly Cashflow
+- Reports
+- Setup
+- More
+
+Improve copy only where needed.
+Each empty state should answer:
+- what is missing
+- why it matters
+- what action to take
+
+9. Version bump
+Update the app version display to:
+- v2.8.0
+
+Only update visible version text/config if the app has a version display.
+Do not create a complicated versioning system.
+
+10. Testing
+Run TypeScript checks and fix all errors.
+Check browser console/runtime logs and fix real errors.
+
+Manually verify:
+- More → Edit Order works
+- Move a feature up/down
+- Refresh app → custom order persists
+- Reset order → default order returns
+- New/missing feature ids are handled safely
+- Done exits edit mode
+- All feature links still navigate correctly
+- Bottom navigation unchanged
+- Backup/export/import still works and does not include menu order
+- PIN Lock still works
+- Quick Templates page does not crash
+- Transfers page still works
+- Budget Coach still works
+- Savings Runway still works
+- Subscription Center still works
+- Cashflow Calendar still works
+- Dashboard Quick Actions still work
+- No SelectItem empty value error remains
+- DialogContent warning is fixed if possible
+- Existing pages still work:
+  Dashboard, Transactions, Accounts, Budgets, Recurring, Subscriptions, Transfers, Goals, Net Worth, Weekly Cashflow, Reports, Calendar, Quick Templates, Setup, More, PIN Lock, PWA, Backup/Import/Export
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files created
+- files updated
+- whether database schema changed
+- editable menu order behavior
+- localStorage keys added
+- final QA fixes
+- accessibility/dialog fixes
+- SelectItem safety fixes
+- version bump
+- what I should test manually next
