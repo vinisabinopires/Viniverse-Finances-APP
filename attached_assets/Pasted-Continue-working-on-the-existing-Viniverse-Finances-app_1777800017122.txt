@@ -1,0 +1,100 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.0.2 — Setup Baseline Snapshot.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, PIN lock, PWA setup, Real Life Setup Wizard, backup/import/export, and all current behavior.
+
+Goal:
+Improve the Real Life Setup completion flow by offering the user an optional baseline net worth snapshot after setup, so the Net Worth Tracker has a starting point.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, biometric auth, or external services.
+- Do not change the database schema.
+- Do not break existing data.
+- Do not break backup/import/export.
+- Do not automatically create a snapshot silently.
+- The user must explicitly tap a button to create the baseline snapshot.
+- Prevent duplicate same-day snapshots using the existing snapshot behavior if possible.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+1. Setup Done screen improvement
+On the Real Life Setup final success screen, add an optional card called:
+
+“Create your starting point”
+
+Text:
+“Save today’s net worth as your baseline so you can track your financial growth from here.”
+
+Add fields:
+- Manual exchange rate input: “1 USD = ___ BRL” optional
+- Optional notes field prefilled with:
+  “Baseline snapshot after Real Life Setup”
+
+Add button:
+“Create Baseline Snapshot”
+
+Behavior:
+- Use existing net worth calculation helpers if available.
+- Calculate current USD and BRL totals from accounts and transactions.
+- Save a netWorthSnapshot for today.
+- Include account breakdown.
+- Include exchange rate and converted totals if the user entered a valid rate.
+- If a snapshot already exists for today, ask whether to replace/update it or cancel.
+- Do not create duplicate snapshots for the same day.
+
+2. Post-snapshot feedback
+After successful snapshot creation:
+- Show “Baseline snapshot saved”
+- Show the snapshot date
+- Show USD total and BRL total
+- If exchange rate was used, show consolidated estimates
+- Add button:
+  “View Net Worth”
+
+3. Safety
+- If there are no accounts, show a gentle message:
+  “Add accounts first to create a meaningful net worth snapshot.”
+- Disable the create button while saving.
+- Prevent double-submit.
+- Show clear error feedback if saving fails.
+- Do not affect PIN settings.
+- Do not affect recurring generation.
+- Do not affect backup/import/export structure.
+
+4. UI polish
+- Keep the dark iOS-like glassmorphism style.
+- The card should fit naturally near the “Activate your recurring plan” and backup reminder cards.
+- Make it mobile-friendly.
+- Keep buttons touch-friendly.
+- Avoid clutter.
+
+5. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- Finish setup with accounts.
+- Done screen shows “Create your starting point”.
+- Enter exchange rate like 5.70.
+- Tap Create Baseline Snapshot.
+- Snapshot saves.
+- View Net Worth button opens /net-worth.
+- Net Worth page shows the snapshot.
+- Creating again on the same day does not create duplicates; it replaces/updates only with confirmation.
+- If setup has no accounts, snapshot card shows a graceful message.
+- Generate Due Transactions still works.
+- Export Backup still includes netWorthSnapshots.
+- PIN settings remain untouched.
+- Existing pages still work:
+  Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, PIN Lock, Export, Import, Clear All Data.
+
+Deliverable:
+At the end, summarize:
+- files updated
+- whether any files were created
+- whether database schema changed
+- baseline snapshot behavior added
+- safety protections
+- what I should test manually next

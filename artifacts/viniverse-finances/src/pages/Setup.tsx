@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   useLiveAccounts, addRecurringRule, addBudget, addGoal, clearAllData, db,
-  generateDueTransactions,
+  generateDueTransactions, calcNetWorth, addSnapshot, updateSnapshot,
 } from "@/hooks/use-finance";
 import type { Account, RecurringFrequency, GoalType } from "@/types";
 import type { GenerateResult } from "@/hooks/use-finance";
@@ -200,6 +200,16 @@ export default function Setup() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genResult,    setGenResult]    = useState<GenerateResult | null>(null);
 
+  // Post-setup baseline snapshot
+  const [snapRate,         setSnapRate]         = useState("");
+  const [snapNotes,        setSnapNotes]         = useState("Baseline snapshot after Real Life Setup");
+  const [isSavingSnap,     setIsSavingSnap]     = useState(false);
+  const [snapDupId,        setSnapDupId]         = useState<string | null>(null);
+  const [snapSaved,        setSnapSaved]         = useState<{
+    date: string; usdCents: number; brlCents: number;
+    convertedUsdCents?: number; convertedBrlCents?: number;
+  } | null>(null);
+
   // Combined account options for income/expense dropdowns
   const allAccountOptions = [
     ...existingAccounts.map((a) => ({ ref: `e:${a.id}`, label: `${a.name} (${a.currencyCode})` })),
@@ -333,6 +343,59 @@ export default function Setup() {
     }
   };
 
+  // ── Post-setup: create baseline net worth snapshot ───────────────────────────
+  const handleCreateSnapshot = async (forceReplace = false) => {
+    if (isSavingSnap) return;
+    setIsSavingSnap(true);
+    try {
+      const [accounts, transactions] = await Promise.all([
+        db.accounts.toArray(),
+        db.transactions.toArray(),
+      ]);
+      if (accounts.length === 0) {
+        toast({ title: "No accounts found", description: "Add accounts first to create a meaningful snapshot.", variant: "destructive" });
+        return;
+      }
+      const { totalUsdCents, totalBrlCents, breakdown } = calcNetWorth(accounts, transactions);
+      const snapshotDate = new Date().toISOString().slice(0, 10);
+      const existing = await db.netWorthSnapshots.where("snapshotDate").equals(snapshotDate).first();
+      if (existing && !forceReplace) {
+        setSnapDupId(existing.id);
+        return;
+      }
+      const rate = parseFloat(snapRate.replace(",", "."));
+      const validRate = !isNaN(rate) && rate > 0 ? rate : undefined;
+      const snapData = {
+        snapshotDate,
+        totalUsdCents,
+        totalBrlCents,
+        exchangeRateBrlPerUsd: validRate,
+        totalConvertedToUsdCents: validRate ? Math.round(totalUsdCents + totalBrlCents / validRate) : undefined,
+        totalConvertedToBrlCents: validRate ? Math.round(totalUsdCents * validRate + totalBrlCents) : undefined,
+        accountBreakdown: breakdown,
+        notes: snapNotes.trim() || undefined,
+      };
+      if (existing && forceReplace) {
+        await updateSnapshot(existing.id, snapData);
+      } else {
+        await addSnapshot(snapData);
+      }
+      setSnapSaved({
+        date: snapshotDate,
+        usdCents: totalUsdCents,
+        brlCents: totalBrlCents,
+        convertedUsdCents: snapData.totalConvertedToUsdCents,
+        convertedBrlCents: snapData.totalConvertedToBrlCents,
+      });
+      setSnapDupId(null);
+      toast({ title: "Baseline snapshot saved!", description: `Net worth captured for ${snapshotDate}.` });
+    } catch {
+      toast({ title: "Snapshot failed", description: "Something went wrong. Try again.", variant: "destructive" });
+    } finally {
+      setIsSavingSnap(false);
+    }
+  };
+
   // ── Navigation ──────────────────────────────────────────────────────────────
   const handleBack = () => {
     if (step === 0) { setLocation("/more"); return; }
@@ -438,6 +501,117 @@ export default function Setup() {
           </motion.div>
         )}
 
+        {/* ── Create your starting point (baseline snapshot) ──────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="w-full max-w-sm glass-card rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+            </div>
+            <p className="text-sm font-semibold text-emerald-300">Create your starting point</p>
+          </div>
+
+          {savedCounts.accounts === 0 && existingAccounts.length === 0 ? (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Add accounts first to create a meaningful net worth snapshot.
+            </p>
+          ) : snapSaved ? (
+            /* ── Success state ── */
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
+              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2.5 space-y-1.5">
+                <p className="text-xs font-semibold text-emerald-400">✓ Baseline snapshot saved</p>
+                <p className="text-xs text-muted-foreground">Date: {snapSaved.date}</p>
+                <p className="text-xs text-muted-foreground">
+                  USD total: {(snapSaved.usdCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  BRL total: {(snapSaved.brlCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </p>
+                {snapSaved.convertedUsdCents !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    ≈ {(snapSaved.convertedUsdCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })} consolidated (USD)
+                  </p>
+                )}
+                {snapSaved.convertedBrlCents !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    ≈ {(snapSaved.convertedBrlCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} consolidated (BRL)
+                  </p>
+                )}
+              </div>
+              <Button variant="outline" onClick={() => setLocation("/net-worth")}
+                className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 h-10 rounded-xl text-sm font-semibold">
+                <TrendingUp className="w-4 h-4 mr-2" /> View Net Worth
+              </Button>
+            </motion.div>
+          ) : (
+            /* ── Form state ── */
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Save today's net worth as your baseline so you can track your financial growth from here.
+              </p>
+
+              {/* Exchange rate */}
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">1 USD = ___ BRL (optional)</label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 5.70"
+                  value={snapRate}
+                  onChange={(e) => setSnapRate(e.target.value)}
+                  className="h-9 rounded-xl bg-white/5 border-white/10 text-sm"
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">Notes (optional)</label>
+                <Input
+                  value={snapNotes}
+                  onChange={(e) => setSnapNotes(e.target.value)}
+                  className="h-9 rounded-xl bg-white/5 border-white/10 text-sm"
+                  placeholder="Baseline snapshot after Real Life Setup"
+                />
+              </div>
+
+              {/* Duplicate-day confirmation */}
+              {snapDupId && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2 space-y-2">
+                  <p className="text-xs text-amber-400 font-medium">A snapshot already exists for today.</p>
+                  <p className="text-xs text-muted-foreground">Do you want to replace it with this new data?</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => handleCreateSnapshot(true)} disabled={isSavingSnap}
+                      className="flex-1 h-8 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/25 text-xs font-semibold">
+                      Replace
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setSnapDupId(null)}
+                      className="flex-1 h-8 rounded-lg bg-white/5 border-white/10 text-xs">
+                      Cancel
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              <Button
+                onClick={() => handleCreateSnapshot(false)}
+                disabled={isSavingSnap}
+                className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/25 h-11 rounded-xl font-semibold disabled:opacity-50"
+                variant="outline"
+              >
+                {isSavingSnap ? (
+                  <><TrendingUp className="w-4 h-4 mr-2 animate-pulse" /> Saving…</>
+                ) : (
+                  <><TrendingUp className="w-4 h-4 mr-2" /> Create Baseline Snapshot</>
+                )}
+              </Button>
+            </div>
+          )}
+        </motion.div>
+
         {/* Backup reminder */}
         <div className="w-full max-w-sm glass-card rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3 text-left">
           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
@@ -457,6 +631,12 @@ export default function Setup() {
             <Button variant="outline" onClick={() => setLocation("/transactions")}
               className="w-full bg-white/5 border-white/10 hover:bg-white/10 h-11 rounded-2xl">
               View Transactions
+            </Button>
+          )}
+          {snapSaved && (
+            <Button variant="outline" onClick={() => setLocation("/net-worth")}
+              className="w-full bg-white/5 border-white/10 hover:bg-white/10 h-11 rounded-2xl">
+              View Net Worth
             </Button>
           )}
           <Button variant="outline" onClick={() => setLocation("/more")}
