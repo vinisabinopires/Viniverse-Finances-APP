@@ -79,27 +79,26 @@ export function BudgetDetailDrawer({ budget, spentCents, onClose }: BudgetDetail
   return (
     <>
       <Drawer open={!!budget} onOpenChange={(open) => { if (!open) handleClose(); }}>
-        <DrawerContent className="bg-background border-t border-white/10 text-foreground p-4 pb-safe max-h-[90dvh] overflow-y-auto">
+        <DrawerContent className="bg-background border-t border-white/10 text-foreground flex flex-col max-h-[92dvh]">
           {mode === "edit" && budget ? (
             <>
-              <DrawerHeader className="px-0 pb-2">
-                <div className="flex items-center justify-between">
-                  <DrawerTitle>Edit Budget</DrawerTitle>
-                  <button
-                    onClick={() => setMode("view")}
-                    className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <DrawerHeader className="px-4 pt-2 pb-2 flex-shrink-0">
+                <DrawerTitle>Edit Budget</DrawerTitle>
               </DrawerHeader>
-              <div className="pb-8">
-                <BudgetForm editBudget={budget} onSuccess={handleEditSuccess} />
+              <div
+                className="flex-1 overflow-y-auto px-4"
+                style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))" }}
+              >
+                <BudgetForm
+                  editBudget={budget}
+                  onSuccess={handleEditSuccess}
+                  onCancel={() => setMode("view")}
+                />
               </div>
             </>
           ) : budget ? (
             <>
-              <DrawerHeader className="px-0 pb-4">
+              <DrawerHeader className="px-4 pb-4 flex-shrink-0">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <DrawerTitle className="text-xl">{budget.category}</DrawerTitle>
@@ -116,72 +115,76 @@ export function BudgetDetailDrawer({ budget, spentCents, onClose }: BudgetDetail
                 </div>
               </DrawerHeader>
 
-              {/* Progress section */}
-              <div className="glass-card p-5 rounded-2xl mb-5 space-y-4">
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Spent</p>
-                    <p className={`text-2xl font-bold ${textColors[status.color]}`}>
-                      {formatMoney(spentCents, budget.currencyCode)}
-                    </p>
+              <div
+                className="flex-1 overflow-y-auto px-4"
+                style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 1.5rem))" }}
+              >
+                <div className="glass-card p-5 rounded-2xl mb-5 space-y-4">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Spent</p>
+                      <p className={`text-2xl font-bold ${textColors[status.color]}`}>
+                        {formatMoney(spentCents, budget.currencyCode)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground mb-0.5">Limit</p>
+                      <p className="text-lg font-semibold">{formatMoney(budget.monthlyLimitCents, budget.currencyCode)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground mb-0.5">Limit</p>
-                    <p className="text-lg font-semibold">{formatMoney(budget.monthlyLimitCents, budget.currencyCode)}</p>
+
+                  <div className="space-y-1.5">
+                    <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${barColors[status.color]}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{pct}% used</span>
+                      <span>
+                        {remainingCents >= 0
+                          ? `${formatMoney(remainingCents, budget.currencyCode)} remaining`
+                          : `Over by ${formatMoney(Math.abs(remainingCents), budget.currencyCode)}`}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${barColors[status.color]}`}
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
+                {budget.notes && (
+                  <div className="flex gap-3 px-1 mb-5">
+                    <StickyNote className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-muted-foreground leading-relaxed">{budget.notes}</p>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{pct}% used</span>
-                    <span>
-                      {remainingCents >= 0
-                        ? `${formatMoney(remainingCents, budget.currencyCode)} remaining`
-                        : `Over by ${formatMoney(Math.abs(remainingCents), budget.currencyCode)}`}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {budget.notes && (
-                <div className="flex gap-3 px-1 mb-5">
-                  <StickyNote className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-muted-foreground leading-relaxed">{budget.notes}</p>
-                </div>
-              )}
-
-              <div className="text-xs text-muted-foreground space-y-0.5 mb-5 px-1">
-                <p>Created {new Date(budget.createdAt).toLocaleDateString()}</p>
-                {budget.updatedAt !== budget.createdAt && (
-                  <p>Updated {new Date(budget.updatedAt).toLocaleDateString()}</p>
                 )}
-              </div>
 
-              <div className="flex gap-3 pb-4">
-                <Button
-                  onClick={() => setMode("edit")}
-                  variant="outline"
-                  className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-foreground rounded-xl"
-                  data-testid="btn-edit-budget"
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-                <Button
-                  onClick={() => setShowDelete(true)}
-                  variant="outline"
-                  className="flex-1 border-rose-500/30 bg-rose-500/5 text-rose-400 hover:bg-rose-500/15 hover:border-rose-500/50 rounded-xl"
-                  data-testid="btn-delete-budget"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
+                <div className="text-xs text-muted-foreground space-y-0.5 mb-5 px-1">
+                  <p>Created {new Date(budget.createdAt).toLocaleDateString()}</p>
+                  {budget.updatedAt !== budget.createdAt && (
+                    <p>Updated {new Date(budget.updatedAt).toLocaleDateString()}</p>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pb-4">
+                  <Button
+                    onClick={() => setMode("edit")}
+                    variant="outline"
+                    className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-foreground rounded-xl"
+                    data-testid="btn-edit-budget"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    onClick={() => setShowDelete(true)}
+                    variant="outline"
+                    className="flex-1 border-rose-500/30 bg-rose-500/5 text-rose-400 hover:bg-rose-500/15 hover:border-rose-500/50 rounded-xl"
+                    data-testid="btn-delete-budget"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </div>
               </div>
             </>
           ) : null}

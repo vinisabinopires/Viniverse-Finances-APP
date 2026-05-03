@@ -64,24 +64,26 @@ export function GoalDetailDrawer({ goal, monthExpensesCents, onClose }: GoalDeta
   return (
     <>
       <Drawer open={!!goal} onOpenChange={(open) => { if (!open) handleClose(); }}>
-        <DrawerContent className="bg-background border-t border-white/10 text-foreground p-4 pb-safe max-h-[90dvh] overflow-y-auto">
+        <DrawerContent className="bg-background border-t border-white/10 text-foreground flex flex-col max-h-[92dvh]">
           {mode === "edit" ? (
             <>
-              <DrawerHeader className="px-0 pb-2">
-                <div className="flex items-center justify-between">
-                  <DrawerTitle>Edit Goal</DrawerTitle>
-                  <button onClick={() => setMode("view")} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors">
-                    Cancel
-                  </button>
-                </div>
+              <DrawerHeader className="px-4 pt-2 pb-2 flex-shrink-0">
+                <DrawerTitle>Edit Goal</DrawerTitle>
               </DrawerHeader>
-              <div className="pb-8">
-                <GoalForm editGoal={goal} onSuccess={() => { toast({ title: "Goal updated" }); setMode("view"); }} />
+              <div
+                className="flex-1 overflow-y-auto px-4"
+                style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))" }}
+              >
+                <GoalForm
+                  editGoal={goal}
+                  onSuccess={() => { toast({ title: "Goal updated" }); setMode("view"); }}
+                  onCancel={() => setMode("view")}
+                />
               </div>
             </>
           ) : (
             <>
-              <DrawerHeader className="px-0 pb-4">
+              <DrawerHeader className="px-4 pb-4 flex-shrink-0">
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 ${meta.bg}`}>
                     {meta.emoji}
@@ -102,72 +104,75 @@ export function GoalDetailDrawer({ goal, monthExpensesCents, onClose }: GoalDeta
                 </div>
               </DrawerHeader>
 
-              {/* Progress */}
-              <div className="glass-card p-5 rounded-2xl mb-5 space-y-3">
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Progress</p>
-                    <p className="text-3xl font-bold">{pct}%</p>
+              <div
+                className="flex-1 overflow-y-auto px-4"
+                style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 1.5rem))" }}
+              >
+                <div className="glass-card p-5 rounded-2xl mb-5 space-y-3">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Progress</p>
+                      <p className="text-3xl font-bold">{pct}%</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground mb-0.5">Remaining</p>
+                      <p className="text-lg font-semibold text-muted-foreground">{formatMoney(remaining, goal.currencyCode)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground mb-0.5">Remaining</p>
-                    <p className="text-lg font-semibold text-muted-foreground">{formatMoney(remaining, goal.currencyCode)}</p>
+                  <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{formatMoney(goal.currentAmountCents, goal.currencyCode)} saved</span>
+                    <span>of {formatMoney(goal.targetAmountCents, goal.currencyCode)}</span>
                   </div>
                 </div>
-                <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{formatMoney(goal.currentAmountCents, goal.currencyCode)} saved</span>
-                  <span>of {formatMoney(goal.targetAmountCents, goal.currencyCode)}</span>
-                </div>
-              </div>
 
-              {/* Emergency fund helper */}
-              {isEmergency && (
-                <div className="glass-card p-4 rounded-xl mb-5 border border-amber-500/20 bg-amber-500/5 space-y-1.5">
-                  <p className="text-xs font-semibold text-amber-400">Emergency Fund</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    A strong emergency fund covers 3–6 months of essential expenses.
-                  </p>
-                  {monthsCovered !== null ? (
-                    <p className="text-sm font-semibold text-amber-300 mt-1">
-                      {monthsCovered} months covered at current monthly expenses
+                {isEmergency && (
+                  <div className="glass-card p-4 rounded-xl mb-5 border border-amber-500/20 bg-amber-500/5 space-y-1.5">
+                    <p className="text-xs font-semibold text-amber-400">Emergency Fund</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      A strong emergency fund covers 3–6 months of essential expenses.
                     </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic">
-                      {monthExpensesCents === 0
-                        ? "Add expenses this month to estimate months covered."
-                        : "Currency mismatch — check that expenses match your goal currency."}
-                    </p>
-                  )}
+                    {monthsCovered !== null ? (
+                      <p className="text-sm font-semibold text-amber-300 mt-1">
+                        {monthsCovered} months covered at current monthly expenses
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">
+                        {monthExpensesCents === 0
+                          ? "Add expenses this month to estimate months covered."
+                          : "Currency mismatch — check that expenses match your goal currency."}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-0 mb-5">
+                  {goal.targetDate && <DetailRow label="Target date" value={formatDate(goal.targetDate)} />}
+                  {goal.notes && <DetailRow label="Notes" value={goal.notes} />}
+                  <DetailRow label="Currency" value={goal.currencyCode} />
+                  <DetailRow label="Created" value={formatDate(goal.createdAt)} />
                 </div>
-              )}
 
-              <div className="space-y-0 mb-5">
-                {goal.targetDate && <DetailRow label="Target date" value={formatDate(goal.targetDate)} />}
-                {goal.notes && <DetailRow label="Notes" value={goal.notes} />}
-                <DetailRow label="Currency" value={goal.currencyCode} />
-                <DetailRow label="Created" value={formatDate(goal.createdAt)} />
-              </div>
-
-              <div className="space-y-3 pb-4">
-                <button
-                  onClick={handleArchive}
-                  className="w-full py-3 rounded-xl text-sm font-medium border bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 transition-colors"
-                  data-testid="btn-archive-goal"
-                >
-                  {goal.isArchived
-                    ? <><ArchiveRestore className="w-4 h-4 inline mr-2" />Restore Goal</>
-                    : <><Archive className="w-4 h-4 inline mr-2" />Archive Goal</>}
-                </button>
-                <div className="flex gap-3">
-                  <Button onClick={() => setMode("edit")} variant="outline" className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-foreground rounded-xl" data-testid="btn-edit-goal">
-                    <Pencil className="w-4 h-4 mr-2" /> Edit
-                  </Button>
-                  <Button onClick={() => setShowDelete(true)} variant="outline" className="flex-1 border-rose-500/30 bg-rose-500/5 text-rose-400 hover:bg-rose-500/15 rounded-xl" data-testid="btn-delete-goal">
-                    <Trash2 className="w-4 h-4 mr-2" /> Delete
-                  </Button>
+                <div className="space-y-3 pb-4">
+                  <button
+                    onClick={handleArchive}
+                    className="w-full py-3 rounded-xl text-sm font-medium border bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 transition-colors"
+                    data-testid="btn-archive-goal"
+                  >
+                    {goal.isArchived
+                      ? <><ArchiveRestore className="w-4 h-4 inline mr-2" />Restore Goal</>
+                      : <><Archive className="w-4 h-4 inline mr-2" />Archive Goal</>}
+                  </button>
+                  <div className="flex gap-3">
+                    <Button onClick={() => setMode("edit")} variant="outline" className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-foreground rounded-xl" data-testid="btn-edit-goal">
+                      <Pencil className="w-4 h-4 mr-2" /> Edit
+                    </Button>
+                    <Button onClick={() => setShowDelete(true)} variant="outline" className="flex-1 border-rose-500/30 bg-rose-500/5 text-rose-400 hover:bg-rose-500/15 rounded-xl" data-testid="btn-delete-goal">
+                      <Trash2 className="w-4 h-4 mr-2" /> Delete
+                    </Button>
+                  </div>
                 </div>
               </div>
             </>

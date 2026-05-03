@@ -242,8 +242,8 @@ export function PinSetupDrawer({ open, mode, onClose, onSuccess }: PinSetupDrawe
 
   return (
     <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DrawerContent className="bg-background border-t border-white/10 text-foreground px-4 pb-safe max-h-[90dvh]">
-        <DrawerHeader className="px-0 pt-4 pb-2">
+      <DrawerContent className="bg-background border-t border-white/10 text-foreground flex flex-col max-h-[90dvh]">
+        <DrawerHeader className="px-4 pt-4 pb-2 flex-shrink-0">
           <div className="flex items-center gap-2">
             {step !== "success" && (
               <button
@@ -258,7 +258,10 @@ export function PinSetupDrawer({ open, mode, onClose, onSuccess }: PinSetupDrawe
           </div>
         </DrawerHeader>
 
-        <div className="pb-8">
+        <div
+          className="flex-1 overflow-y-auto px-4"
+          style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))" }}
+        >
           <AnimatePresence mode="wait">
             {step === "success" ? (
               <motion.div

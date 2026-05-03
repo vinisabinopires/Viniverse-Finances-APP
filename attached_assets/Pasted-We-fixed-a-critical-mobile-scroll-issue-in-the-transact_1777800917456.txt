@@ -1,0 +1,97 @@
+We fixed a critical mobile scroll issue in the transaction drawer caused by putting overflow-y-auto directly on Vaul DrawerContent.
+
+Now perform a targeted audit for the same issue across the rest of the Viniverse – Finances app.
+
+Do not rebuild the project from scratch.
+Do not redesign the app.
+Do not add new features.
+Only inspect and fix drawer/modal/bottom-sheet scroll and action button visibility issues.
+
+Context:
+The transaction drawer was fixed by:
+- removing overflow-y-auto from DrawerContent
+- making DrawerContent flex flex-col max-h-[92dvh]
+- making DrawerHeader flex-shrink-0
+- placing overflow-y-auto on an inner flex-1 wrapper
+- adding safe-area bottom padding
+- ensuring Save/Cancel buttons are visible/reachable
+
+Goal:
+Apply the same safe pattern wherever needed so all forms and drawers are usable on mobile.
+
+Inspect likely files:
+- src/components/AccountDetailDrawer.tsx
+- src/components/AccountForm.tsx
+- src/components/BudgetDetailDrawer.tsx
+- src/components/BudgetForm.tsx
+- src/components/GoalDetailDrawer.tsx
+- src/components/GoalForm.tsx
+- src/components/RecurringDetailDrawer.tsx
+- src/components/RecurringForm.tsx
+- src/components/PinSetupDrawer.tsx
+- src/pages/NetWorth.tsx
+- src/pages/WeeklyCashflow.tsx
+- src/pages/Setup.tsx
+- any BottomSheet / Drawer / modal components
+- any Vaul DrawerContent usage
+
+Tasks:
+
+1. Find all DrawerContent / bottom sheet / modal components
+Look for:
+- overflow-y-auto directly on DrawerContent
+- forms taller than the visible screen
+- save buttons at the bottom that can become unreachable
+- action buttons hidden behind the home indicator or bottom navigation
+- drawers that do not scroll smoothly on mobile
+
+2. Apply the corrected drawer pattern where needed
+For Vaul drawers:
+- DrawerContent should use flex flex-col max-h-[92dvh]
+- DrawerHeader should use flex-shrink-0
+- Scroll should live in an inner wrapper:
+  flex-1 overflow-y-auto
+- Add safe bottom padding to the inner scroll wrapper:
+  paddingBottom: max(2rem, env(safe-area-inset-bottom, 2rem))
+
+3. Ensure every form has visible actions
+For each add/edit form, verify clear buttons:
+- Primary: Save / Add / Update
+- Secondary: Cancel / Close where appropriate
+
+Buttons must be:
+- visible or reachable on mobile
+- not hidden behind bottom nav
+- disabled while submitting
+- protected against double-submit
+
+4. Do not change business logic
+Do not alter calculations, database schema, backup/import/export, PIN security, PWA, reports, budgets, recurring logic, goals, or setup behavior unless needed for scroll/action visibility.
+
+5. Testing
+Run TypeScript checks and fix all errors.
+Check runtime console errors.
+
+Manually verify on mobile viewport:
+- Add/edit Account
+- Add/edit Budget
+- Add/edit Goal
+- Add/edit Recurring Rule
+- PIN setup/change/disable drawer
+- Net Worth snapshot form
+- Weekly Cashflow plan form
+- Setup Wizard steps with long content
+- Every form scrolls smoothly
+- Save/Cancel buttons are visible or reachable
+- No drawer has stuck scrolling
+- No important button is hidden behind the bottom nav/home indicator
+- Existing transaction drawer fix still works
+
+Deliverable:
+Summarize:
+- files inspected
+- files updated
+- which drawers/forms had the same risky pattern
+- what fixes were applied
+- any remaining forms that are safe and unchanged
+- what I should test manually next

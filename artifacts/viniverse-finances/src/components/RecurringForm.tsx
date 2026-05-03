@@ -31,10 +31,11 @@ type FormData = z.infer<typeof schema>;
 
 interface RecurringFormProps {
   onSuccess: () => void;
+  onCancel?: () => void;
   editRule?: RecurringRule;
 }
 
-export function RecurringForm({ onSuccess, editRule }: RecurringFormProps) {
+export function RecurringForm({ onSuccess, onCancel, editRule }: RecurringFormProps) {
   const accounts = useLiveAccounts();
 
   const form = useForm<FormData>({
@@ -300,13 +301,26 @@ export function RecurringForm({ onSuccess, editRule }: RecurringFormProps) {
           </button>
         </div>
 
-        <Button
-          type="submit"
-          disabled={form.formState.isSubmitting}
-          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
-        >
-          {form.formState.isSubmitting ? "Saving…" : editRule ? "Update Rule" : "Create Rule"}
-        </Button>
+        <div className="space-y-2 pt-1">
+          <Button
+            type="submit"
+            disabled={form.formState.isSubmitting}
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
+          >
+            {form.formState.isSubmitting ? "Saving…" : editRule ? "Save Changes" : "Create Rule"}
+          </Button>
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={form.formState.isSubmitting}
+              className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-foreground rounded-xl py-5 font-medium"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       </form>
     </Form>
   );

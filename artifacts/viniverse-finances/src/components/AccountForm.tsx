@@ -22,10 +22,11 @@ type FormData = z.infer<typeof schema>;
 
 interface AccountFormProps {
   onSuccess: () => void;
+  onCancel?: () => void;
   editAccount?: Account;
 }
 
-export function AccountForm({ onSuccess, editAccount }: AccountFormProps) {
+export function AccountForm({ onSuccess, onCancel, editAccount }: AccountFormProps) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: editAccount
@@ -153,14 +154,27 @@ export function AccountForm({ onSuccess, editAccount }: AccountFormProps) {
           />
         </div>
 
-        <Button
-          type="submit"
-          data-testid="btn-save-account"
-          disabled={form.formState.isSubmitting}
-          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
-        >
-          {form.formState.isSubmitting ? "Saving…" : editAccount ? "Update Account" : "Add Account"}
-        </Button>
+        <div className="space-y-2 pt-1">
+          <Button
+            type="submit"
+            data-testid="btn-save-account"
+            disabled={form.formState.isSubmitting}
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
+          >
+            {form.formState.isSubmitting ? "Saving…" : editAccount ? "Save Changes" : "Add Account"}
+          </Button>
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={form.formState.isSubmitting}
+              className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-foreground rounded-xl py-5 font-medium"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       </form>
     </Form>
   );
