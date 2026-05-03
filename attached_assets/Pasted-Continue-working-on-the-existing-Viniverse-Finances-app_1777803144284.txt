@@ -1,0 +1,129 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.3.1 — Transaction Page Template Shortcut.
+
+Important direction:
+Do NOT add CSV export, PDF export, cloud sync, biometric auth, bank integrations, external APIs, or new database tables in this phase.
+This is a small UX integration phase only.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, cashflow calendar, quick templates, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Add a Quick Templates shortcut to the Transactions page so the user can open a template-prefilled transaction drawer from the transaction list, not only from the Dashboard.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not change the database schema.
+- Do not break existing data.
+- Do not break backup/import/export.
+- Do not alter the existing Dashboard Quick Templates behavior.
+- Do not change bottom navigation:
+  Home / Transactions / Budgets / Accounts / More
+- Templates must not silently create transactions. They only prefill the transaction form. User must still tap Save Transaction.
+
+1. Transactions page integration
+On the Transactions page, add a compact “Templates” section or button near the Add Transaction / filter area.
+
+Preferred behavior:
+- If active quick templates exist, show a small horizontal scroll row or compact grid of up to 6 active templates.
+- Each template shows:
+  - icon
+  - name
+  - amount or “any amount”
+  - subtle income/expense tint
+
+If no templates exist:
+- Show a small CTA:
+  “Create transaction shortcuts”
+  button/link: “Manage Templates”
+  route: /quick-templates
+
+2. Tapping a template
+When the user taps a template:
+- Open the existing TransactionDrawer
+- Prefill:
+  - type
+  - amount if present
+  - currency
+  - accountId if valid
+  - category
+  - description
+  - notes
+- Drawer title should use the template name if easy:
+  “Coffee”
+  “Gas”
+  etc.
+- User must still tap Save Transaction.
+- Cancel closes without saving.
+
+3. Existing Add Transaction behavior
+Keep the existing Add Transaction button/FAB exactly working.
+Do not remove or replace it.
+
+Transactions page should support:
+- normal add transaction
+- template-prefilled add transaction
+- edit existing transaction
+- delete transaction
+- search/filter
+
+4. Reuse logic where possible
+Avoid duplicating large chunks from Dashboard if possible.
+If it makes sense, create a small reusable component:
+- QuickTemplatePicker
+or
+- QuickTemplateRow
+
+This component may be used by Dashboard and Transactions if the refactor is small and safe.
+
+If refactoring Dashboard is risky, do not refactor it. Implement the Transactions integration directly.
+
+5. Mobile UX
+Make the templates row touch-friendly.
+Avoid visual clutter.
+If there are many templates, allow horizontal scrolling.
+No horizontal page overflow.
+Keep dark iOS-like glassmorphism.
+
+6. Safety
+Handle:
+- no templates
+- inactive templates
+- deleted/missing accountId
+- no accounts
+- template with no amount
+- template with missing category
+- double-submit prevention still works in TransactionForm
+
+7. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix errors.
+
+Manually verify:
+- Transactions page loads normally.
+- Existing Add Transaction still works.
+- Existing FAB/Add button still opens blank form.
+- Active templates appear on Transactions page.
+- Hidden/inactive templates do not appear.
+- Tapping template opens drawer prefilled.
+- Template with no amount leaves amount blank.
+- Template with deleted account does not crash.
+- Save Transaction creates correct transaction.
+- Cancel closes without creating.
+- Search/filter still works.
+- Edit existing transaction still works.
+- Delete transaction still works.
+- Dashboard Quick Templates still work.
+- Backup/import/export still work.
+- Existing pages still work:
+  Dashboard, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, Calendar, Setup, More, PIN Lock, PWA.
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files updated
+- files created, if any
+- whether database schema changed
+- Transactions page template shortcut behavior
+- any shared component/refactor made
+- what I should test manually next
