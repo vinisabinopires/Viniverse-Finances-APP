@@ -50,8 +50,8 @@ export default function Dashboard() {
     const d = new Date(t.occurredAt);
     return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear();
   });
-  const monthIncome  = currentMonthTx.filter((t) => t.type === "INCOME").reduce((a, t) => a + t.amountCents, 0);
-  const monthExpense = currentMonthTx.filter((t) => t.type === "EXPENSE").reduce((a, t) => a + t.amountCents, 0);
+  const monthIncome  = currentMonthTx.filter((t) => t.type === "INCOME"  && t.currencyCode === "USD").reduce((a, t) => a + t.amountCents, 0);
+  const monthExpense = currentMonthTx.filter((t) => t.type === "EXPENSE" && t.currencyCode === "USD").reduce((a, t) => a + t.amountCents, 0);
   const totalBar     = monthIncome + monthExpense || 1;
 
   // USD-only month snapshot (for Monthly Snapshot widget)
@@ -110,7 +110,7 @@ export default function Dashboard() {
     .sort((a, b) => b.pct - a.pct).slice(0, 5);
 
   // ─── Top categories ───────────────────────────────────────────────────────
-  const categoryTotals = currentMonthTx.filter((t) => t.type === "EXPENSE").reduce<Record<string, number>>((acc, t) => {
+  const categoryTotals = currentMonthTx.filter((t) => t.type === "EXPENSE" && t.currencyCode === "USD").reduce<Record<string, number>>((acc, t) => {
     acc[t.category] = (acc[t.category] || 0) + t.amountCents; return acc;
   }, {});
   const topCategories     = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -136,6 +136,7 @@ export default function Dashboard() {
               <h2 className="text-4xl font-bold tracking-tight">{formatMoney(totalUsdCents, "USD")}</h2>
               {totalBrlCents !== 0 && <p className="text-sm text-muted-foreground font-medium">+ {formatMoney(totalBrlCents, "BRL")}</p>}
             </div>
+            <p className="text-[10px] text-muted-foreground/60 mb-2 -mt-2">This month · USD</p>
             <div className="grid grid-cols-2 gap-4">
               <div><div className="flex items-center gap-1.5 text-emerald-400 mb-1"><ArrowDownRight className="w-4 h-4" /><span className="text-xs font-medium">Income</span></div><p className="text-lg font-semibold">{formatMoney(monthIncome, "USD")}</p></div>
               <div><div className="flex items-center gap-1.5 text-rose-400 mb-1"><ArrowUpRight className="w-4 h-4" /><span className="text-xs font-medium">Expenses</span></div><p className="text-lg font-semibold">{formatMoney(monthExpense, "USD")}</p></div>

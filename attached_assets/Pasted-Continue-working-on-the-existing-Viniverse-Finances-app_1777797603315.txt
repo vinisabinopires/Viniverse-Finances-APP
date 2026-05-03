@@ -1,0 +1,273 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. This phase is focused on stability, QA, mobile polish, design consistency, and data safety. Do not add major new features.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, backup/import/export, and all current app behavior.
+
+Goal of this phase:
+Make the app feel stable, polished, consistent, mobile-friendly, and safe enough for real daily use.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not change the visual identity.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, or external services.
+- Do not add new major features like CSV, PDF, cloud sync, streaks, or charts.
+- Avoid new dependencies unless absolutely necessary.
+- Preserve all existing data.
+- Do not change the database schema unless absolutely necessary.
+- Do not break backup/import/export.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+Tasks:
+
+1. Full app inspection
+Review the current structure and identify duplicated logic, inconsistent UI patterns, unsafe calculations, bad spacing, or possible mobile issues.
+
+Do not rewrite everything. Make targeted improvements only.
+
+2. Mobile layout polish
+Improve mobile usability across all pages:
+- Dashboard
+- Transactions
+- Budgets
+- Accounts
+- More
+- Recurring Transactions
+- Financial Goals
+- Net Worth
+- Weekly Cashflow
+- Monthly Reports
+
+Fix:
+- content hidden behind bottom navigation
+- FAB overlapping important content
+- cramped cards
+- headers too close to screen edges
+- drawer/modal overflow issues
+- scroll areas that feel awkward
+- inconsistent page padding
+- buttons too small for touch
+- forms that are uncomfortable on iPhone screens
+
+Use safe bottom padding where needed.
+
+3. Dashboard cleanup
+The Dashboard has many sections now. Make it feel organized and not overwhelming.
+
+Keep these sections, but improve spacing and hierarchy:
+- Total Balance
+- Monthly Snapshot
+- This Week
+- Net Worth
+- Goals Progress
+- Upcoming Recurring
+- Budget Watch
+- Top Expenses
+- Recent Transactions
+
+If necessary:
+- make secondary sections more compact
+- use consistent section headers
+- add subtle “View” links
+- reduce visual noise
+- keep the most important numbers easy to scan
+
+Do not remove functionality.
+
+4. Component consistency
+Standardize common UI patterns:
+- page titles and subtitles
+- section headers
+- glass cards
+- empty states
+- progress bars
+- status pills
+- amount colors
+- date formatting
+- currency labels
+- action buttons
+- destructive buttons
+- drawer/modal spacing
+
+If useful, create small reusable UI helpers/components, but avoid large refactors.
+
+5. Forms polish
+Review and improve forms:
+- Transaction form
+- Account form
+- Budget form
+- Recurring form
+- Goal form
+- Weekly plan form
+- Snapshot form
+
+Improve:
+- input labels
+- numeric input behavior on mobile
+- required field validation
+- disabled states
+- success feedback
+- error feedback
+- cancel/back behavior
+- spacing
+- consistent button placement
+
+Prevent invalid amounts like empty value, NaN, or negative values where they do not make sense.
+
+6. Data safety and validation
+Improve defensive handling for:
+- missing account references
+- deleted accounts linked to old transactions
+- invalid dates
+- missing categories
+- missing currencyCode
+- malformed imported JSON
+- old backups missing newer arrays
+- invalid amountCents values
+- zero income savings-rate division
+- empty datasets
+
+The app should not crash if data is incomplete. Show graceful fallbacks.
+
+7. Backup/import/export audit
+Review JSON export/import.
+
+Ensure export includes:
+- accounts
+- transactions
+- budgets
+- recurringRules
+- financialGoals
+- netWorthSnapshots
+- weeklyPlans
+- backup version
+- exportedAt timestamp if possible
+
+Ensure import:
+- safely validates arrays
+- supports older backup versions
+- does not crash on missing keys
+- gives clear success/error messages
+- preserves data shape
+- handles invalid JSON gracefully
+
+Do not break existing backup compatibility.
+
+8. Financial calculation audit
+Review calculations for:
+- account balances
+- total balance by currency
+- monthly income/expenses/net
+- weekly cashflow
+- budget progress
+- recurring duplicate prevention
+- goal progress
+- emergency fund months covered
+- net worth snapshots
+- reports insights
+
+Fix obvious inconsistencies, but do not redesign business logic unless needed.
+
+9. Accessibility and UX details
+Improve:
+- button aria-labels where useful
+- clickable card feedback
+- keyboard focus if simple to add
+- tap targets
+- contrast where text is too faint
+- destructive action confirmations
+- loading/empty states
+
+10. PWA and app metadata quick check
+Review PWA-related files if present:
+- manifest
+- app name
+- theme color
+- icon references
+- viewport behavior
+
+Do not spend too much time here. Just fix obvious issues.
+
+11. TypeScript and runtime verification
+Run TypeScript checks.
+Fix all TypeScript errors.
+Check console/runtime logs.
+Fix runtime errors and warnings where reasonable.
+
+12. Manual test checklist
+After changes, verify these flows:
+
+Core:
+- Dashboard loads
+- Bottom navigation works
+- More feature links work
+
+Transactions:
+- add transaction
+- edit transaction
+- delete transaction
+- search/filter transactions
+- recurring transaction badge still works
+
+Accounts:
+- add account
+- edit account
+- delete account with safety warning
+- balances remain correct
+
+Budgets:
+- add/edit/delete budget
+- budget progress matches expenses
+- Dashboard Budget Watch still works
+
+Recurring:
+- add/edit/pause/delete recurring rule
+- generate due transactions
+- generate again and confirm duplicates are skipped
+
+Goals:
+- add/edit/archive/restore/delete goal
+- Emergency Fund months covered does not crash
+- Dashboard Goals Progress works
+
+Net Worth:
+- exchange rate input works
+- create snapshot
+- replace same-day snapshot
+- delete snapshot
+- Dashboard Net Worth widget works
+
+Weekly Cashflow:
+- week selector works
+- currency selector works
+- create/edit weekly plan
+- safe-to-spend estimate works
+- generate recurring for week works without duplicates
+
+Reports:
+- month selector works
+- currency selector works
+- category breakdown works
+- insights do not invent data
+- no crash when income is zero
+
+Backup:
+- export JSON
+- import same JSON
+- import old backup if available
+- invalid JSON shows an error
+- clear all data requires DELETE and clears everything
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files updated
+- whether any new files were created
+- whether database schema changed
+- bugs fixed
+- UI/UX improvements made
+- data safety improvements made
+- remaining risks or recommended next steps
+- what I should test manually next
+
+Remember:
+This is a stabilization and polish phase. Do not add large new features.

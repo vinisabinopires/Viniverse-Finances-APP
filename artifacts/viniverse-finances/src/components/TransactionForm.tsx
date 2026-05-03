@@ -236,9 +236,10 @@ export function TransactionForm({ onSuccess, defaultType = "EXPENSE", editTransa
         <Button
           type="submit"
           data-testid="btn-save-transaction"
-          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold"
+          disabled={form.formState.isSubmitting}
+          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
         >
-          {editTransaction ? "Update Transaction" : "Save Transaction"}
+          {form.formState.isSubmitting ? "Saving…" : editTransaction ? "Update Transaction" : "Save Transaction"}
         </Button>
       </form>
     </Form>

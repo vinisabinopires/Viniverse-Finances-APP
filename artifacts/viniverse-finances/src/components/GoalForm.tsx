@@ -216,9 +216,10 @@ export function GoalForm({ onSuccess, editGoal }: GoalFormProps) {
 
         <Button
           type="submit"
-          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold"
+          disabled={form.formState.isSubmitting}
+          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
         >
-          {editGoal ? "Update Goal" : "Create Goal"}
+          {form.formState.isSubmitting ? "Saving…" : editGoal ? "Update Goal" : "Create Goal"}
         </Button>
       </form>
     </Form>

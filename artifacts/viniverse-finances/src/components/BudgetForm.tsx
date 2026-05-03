@@ -234,9 +234,10 @@ export function BudgetForm({ onSuccess, defaultMonth, editBudget }: BudgetFormPr
         <Button
           type="submit"
           data-testid="btn-save-budget"
-          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold"
+          disabled={form.formState.isSubmitting}
+          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
         >
-          {editBudget ? "Update Budget" : "Create Budget"}
+          {form.formState.isSubmitting ? "Saving…" : editBudget ? "Update Budget" : "Create Budget"}
         </Button>
       </form>
     </Form>
