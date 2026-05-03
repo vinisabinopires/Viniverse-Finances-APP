@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -12,17 +12,18 @@ import {
   useLiveGoals, useLiveSnapshots, useLiveWeeklyPlans,
   calcBudgetSpent, calcNetWorth, getNextOccurrenceAfter,
   getWeekStartDate, getWeekEndDate, toDateStr, generateDueTransactions,
+  getOccurrenceDatesForRange,
 } from "@/hooks/use-finance";
 import { formatMoney, formatDate, formatFrequency, formatMonthYear } from "@/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw,
   BarChart2, Zap, FileBarChart2, Sparkles, ChevronDown, ChevronUp,
-  Minus, Plus, Camera, Download, Rows3,
+  Minus, Plus, Camera, Download, Rows3, CalendarDays,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import { useToast } from "@/hooks/use-toast";
-import type { Transaction } from "@/types";
+import type { Transaction, RecurringRule } from "@/types";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -202,6 +203,26 @@ export default function Dashboard() {
     .filter((x): x is { rule: typeof x.rule; nextDue: Date } => x.nextDue !== null && x.nextDue <= in14)
     .sort((a, b) => a.nextDue.getTime() - b.nextDue.getTime())
     .slice(0, 5);
+
+  // ─── Next 7 Days (upcoming recurring) ───────────────────────────────────
+  const upcomingBills = useMemo(() => {
+    const start = new Date(today); start.setHours(0, 0, 0, 0);
+    const end   = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999);
+    const items: Array<{ rule: RecurringRule; dateStr: string; isGenerated: boolean }> = [];
+    for (const rule of recurringRules) {
+      if (!rule.isActive) continue;
+      const dates = getOccurrenceDatesForRange(rule, start, end);
+      for (const dateStr of dates) {
+        const key         = `${rule.id}:${dateStr}`;
+        const isGenerated = transactions.some((t) => t.recurringOccurrenceKey === key);
+        items.push({ rule, dateStr, isGenerated });
+      }
+    }
+    return items
+      .sort((a, b) => a.dateStr.localeCompare(b.dateStr) || (a.rule.type === 'INCOME' ? -1 : 1))
+      .slice(0, 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recurringRules, transactions]);
 
   // ─── Budgets ─────────────────────────────────────────────────────────────
   const monthBudgets = budgets
@@ -411,6 +432,61 @@ export default function Dashboard() {
               View Accounts <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
+        </motion.div>
+
+        {/* ── Upcoming Bills / Next 7 Days ─────────────────────────────── */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }} className={`glass-card ${cardPad} rounded-2xl`} data-testid="card-upcoming-bills">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-rose-500/15 flex items-center justify-center">
+                <CalendarDays className="w-3.5 h-3.5 text-rose-400" />
+              </div>
+              <div>
+                <h3 className={`font-semibold ${compact ? "text-xs" : "text-sm"}`}>Upcoming Bills</h3>
+                <p className="text-[10px] text-muted-foreground">Next 7 days</p>
+              </div>
+            </div>
+            <Link href="/calendar" className="flex items-center gap-0.5 text-xs text-primary hover:text-primary/80 transition-colors">
+              View Calendar <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+          {upcomingBills.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-3">
+              No upcoming recurring items in the next 7 days.{" "}
+              <Link href="/recurring" className="text-primary hover:underline">Set up rules →</Link>
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {upcomingBills.map(({ rule, dateStr, isGenerated }) => {
+                const isIn    = rule.type === "INCOME";
+                const dsDate  = new Date(dateStr + "T12:00:00");
+                const isToday = dateStr === toDateStr(today);
+                return (
+                  <div key={`${rule.id}:${dateStr}`} className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${isIn ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
+                      {isIn ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-medium truncate ${compact ? "text-xs" : "text-sm"}`}>{rule.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{isToday ? "Today" : formatDate(dsDate.toISOString())}</p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className={`font-semibold tabular-nums ${compact ? "text-xs" : "text-sm"} ${isIn ? "text-emerald-400" : "text-rose-400"}`}>
+                        {isIn ? "+" : "-"}{formatMoney(rule.amountCents, rule.currencyCode)}
+                      </p>
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border inline-block ${
+                        isGenerated
+                          ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/30"
+                          : "text-amber-400 bg-amber-500/15 border-amber-500/30"
+                      }`}>
+                        {isGenerated ? "Done" : "Pending"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </motion.div>
 
         {/* ── Budget Watch (collapsible, default expanded) ─────────────── */}

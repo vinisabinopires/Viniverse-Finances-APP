@@ -1,0 +1,210 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.2 — Cashflow Calendar & Bills Timeline.
+
+Important direction:
+Do NOT work on CSV export, PDF export, external exports, cloud sync, biometric auth, or integrations in this phase. We are focusing on making the in-app experience more complete and useful.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Add a Cashflow Calendar / Bills Timeline so the user can see upcoming income, fixed expenses, recurring transactions, generated transactions, and daily cashflow in a calendar-style monthly view.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, biometric auth, external services, CSV export, or PDF export.
+- Do not change the database schema unless absolutely necessary.
+- Prefer computed data from existing transactions and recurringRules.
+- Do not break existing data.
+- Do not break backup/import/export.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+- New page should be accessible from More/Settings and optionally from Dashboard.
+
+1. Create Cashflow Calendar page
+Create a new route:
+- /calendar
+
+Page name:
+- Cashflow Calendar
+
+Add a feature card in More/Settings:
+- “Cashflow Calendar”
+- Subtitle: “See upcoming income, bills, and daily money flow.”
+
+2. Month and currency selector
+At the top of the Calendar page, add:
+- Month selector: previous month / current month / next month
+- Currency toggle: USD / BRL
+
+All calculations must stay within selected currency.
+Do not mix USD and BRL.
+
+3. Calendar-style monthly view
+Create a mobile-friendly month calendar.
+
+For each day, show compact indicators:
+- income total for that day
+- expense total for that day
+- net amount for that day
+- small dots/badges for recurring due items
+- visual cue if the day has pending recurring items
+- visual cue if the day has generated/recorded transactions
+
+Do not use a heavy calendar library.
+Use simple CSS grid / Tailwind.
+
+The calendar should work well on mobile:
+- compact day cells
+- readable numbers
+- tap-friendly days
+- no horizontal overflow
+
+4. Selected day detail panel
+When the user taps a day, show a detail panel below the calendar.
+
+Show:
+- selected date
+- actual transactions for that date
+- recurring rules due that date
+- pending recurring occurrences
+- generated recurring occurrences
+- income total
+- expense total
+- net total
+
+For transactions:
+- show description/category/account/amount
+- tapping a transaction should open existing transaction detail drawer if easy; otherwise navigate to Transactions with no risky refactor
+
+For recurring occurrences:
+- show name, amount, category, account, frequency
+- status:
+  - Generated
+  - Pending
+  - Inactive
+
+5. Generate due actions
+Add safe generation buttons:
+- Generate due transactions for selected day
+- Generate due transactions up to today
+- Generate due transactions for this month, only up to today
+
+Rules:
+- Never generate future transactions.
+- Always use existing recurringOccurrenceKey duplicate prevention.
+- Show created/skipped result in toast.
+- Disable button while generating.
+- Running the same action twice must not create duplicates.
+
+6. Bills Timeline section
+Below or above the calendar, add a compact “Upcoming Timeline” section.
+
+Show upcoming recurring items for the selected month:
+- Today and future days first
+- then past pending items if any
+- group by date
+- show income and expense separately if useful
+- show status badge: Pending / Generated / Inactive
+
+This should feel like a simple bills calendar.
+
+7. Monthly cashflow summary
+Add compact summary cards:
+- Expected recurring income this month
+- Expected recurring expenses this month
+- Actual income recorded
+- Actual expenses recorded
+- Pending income
+- Pending expenses
+- Projected net
+
+Definitions:
+- Expected recurring = all active recurring occurrences in selected month and currency
+- Actual = generated/normal transactions recorded in selected month and currency
+- Pending = recurring occurrences that are due but not generated
+- Projected net = expected recurring income - expected recurring expenses plus any non-recurring actual net if simple to calculate
+
+Keep calculations understandable and safe.
+If something is ambiguous, label it as estimate.
+
+8. Dashboard integration
+Add a compact “Upcoming Bills” or “Next 7 Days” card on Dashboard.
+
+Show:
+- next 3 upcoming recurring items
+- amount
+- date
+- status Pending/Generated
+- CTA: “View Calendar”
+
+Keep it compact and not visually noisy.
+
+9. Empty states
+If no recurring rules exist:
+- show “Set up recurring income and bills”
+- link to /recurring
+
+If no transactions exist for a day:
+- show “No transactions recorded for this day.”
+
+If no upcoming items:
+- show “No upcoming bills or recurring income this month.”
+
+10. UI polish
+Keep the dark iOS-like glassmorphism style.
+Calendar should feel premium and practical.
+Use subtle colors:
+- income positive/green
+- expenses red/rose
+- neutral muted
+- pending amber
+- generated emerald/blue
+Use accessible contrast.
+Avoid clutter.
+
+11. Data safety
+Handle safely:
+- recurring rules with missing account references
+- inactive recurring rules
+- missing currencyCode
+- invalid dates
+- deleted accounts linked to transactions
+- no transactions
+- no recurring rules
+- no active rules
+- duplicate generation attempts
+
+12. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- More → Cashflow Calendar opens /calendar
+- Month selector works
+- Currency selector works
+- Calendar shows days for selected month correctly
+- Tapping a day opens/updates selected day detail
+- Actual transactions appear on correct dates
+- Recurring rules due on that day appear
+- Generated vs Pending status is correct
+- Generate selected day works and does not duplicate on second run
+- Generate up to today works and does not generate future transactions
+- Generate this month only generates up to today
+- Upcoming Timeline groups items by date
+- Monthly cashflow summary totals make sense
+- Dashboard shows Next 7 Days / Upcoming Bills card
+- Dashboard CTA opens /calendar
+- Existing pages still work:
+  Dashboard, Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, Setup, More, PIN Lock, PWA, Backup/Import/Export
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files created
+- files updated
+- whether database schema changed
+- calendar behavior added
+- generation actions added
+- dashboard integration
+- what I should test manually next

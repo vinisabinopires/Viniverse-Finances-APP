@@ -197,6 +197,30 @@ export async function generateTransactionsUpTo(rules: RecurringRule[], upTo: Dat
   return _doGenerate(rules, upTo);
 }
 
+export async function generateForDate(rules: RecurringRule[], date: Date): Promise<GenerateResult> {
+  const cutoff = new Date(); cutoff.setHours(23, 59, 59, 999);
+  if (date > cutoff) return { created: 0, skipped: 0 };
+  const dateStr = toDateStr(date);
+  const now = new Date().toISOString();
+  let created = 0; let skipped = 0;
+  for (const rule of rules) {
+    if (!rule.isActive) continue;
+    const occurrences = getOccurrenceDatesForRange(rule, date, date);
+    if (!occurrences.includes(dateStr)) continue;
+    const key = `${rule.id}:${dateStr}`;
+    if (await db.transactions.where('recurringOccurrenceKey').equals(key).count() > 0) { skipped++; continue; }
+    await db.transactions.add({
+      id: crypto.randomUUID(), type: rule.type, amountCents: rule.amountCents,
+      currencyCode: rule.currencyCode, accountId: rule.accountId,
+      category: rule.category, description: rule.description || rule.name,
+      notes: rule.notes, occurredAt: new Date(dateStr + 'T12:00:00').toISOString(),
+      recurringRuleId: rule.id, recurringOccurrenceKey: key, createdAt: now, updatedAt: now,
+    });
+    created++;
+  }
+  return { created, skipped };
+}
+
 // ─── Financial Goals ──────────────────────────────────────────────────────────
 
 export async function addGoal(data: Omit<FinancialGoal, 'id' | 'createdAt' | 'updatedAt'>) {

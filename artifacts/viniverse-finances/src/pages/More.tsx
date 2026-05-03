@@ -7,7 +7,7 @@ import { clearAllData, db } from "@/hooks/use-finance";
 import {
   Download, Upload, Trash2, Info, Shield, AlertTriangle,
   RefreshCw, Target, TrendingUp, BarChart2, ChevronRight, FileBarChart2,
-  Lock, LockOpen, ShieldCheck, Timer, Wand2,
+  Lock, LockOpen, ShieldCheck, Timer, Wand2, CalendarDays,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PinSetupDrawer, type PinSetupMode } from "@/components/PinSetupDrawer";
@@ -151,6 +151,7 @@ export default function More() {
           <div className="glass-card rounded-2xl overflow-hidden divide-y divide-white/10 border border-white/10">
             {[
               { href: "/setup",           icon: <Wand2         className="w-4 h-4 text-purple-400" />,  bg: "bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-purple-500/10", title: "Real Life Setup",        desc: "Set up your real accounts, income, bills, and goals" },
+              { href: "/calendar",        icon: <CalendarDays  className="w-4 h-4 text-rose-400" />,   bg: "bg-rose-500/10",    title: "Cashflow Calendar",       desc: "See upcoming income, bills, and daily money flow." },
               { href: "/recurring",       icon: <RefreshCw     className="w-4 h-4 text-indigo-400" />,  bg: "bg-indigo-500/10",  title: "Recurring Transactions", desc: "Automate income and expense rules" },
               { href: "/goals",           icon: <Target        className="w-4 h-4 text-emerald-400" />, bg: "bg-emerald-500/10", title: "Financial Goals",         desc: "Track savings targets and milestones" },
               { href: "/net-worth",       icon: <TrendingUp    className="w-4 h-4 text-cyan-400" />,   bg: "bg-cyan-500/10",    title: "Net Worth Tracker",       desc: "Monitor and snapshot financial growth" },
