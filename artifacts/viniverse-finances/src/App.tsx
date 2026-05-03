@@ -19,6 +19,7 @@ import WeeklyCashflow from "@/pages/WeeklyCashflow";
 import Reports from "@/pages/Reports";
 import Setup from "@/pages/Setup";
 import CalendarPage from "@/pages/Calendar";
+import QuickTemplates from "@/pages/QuickTemplates";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/reports" component={Reports} />
       <Route path="/setup" component={Setup} />
       <Route path="/calendar" component={CalendarPage} />
+      <Route path="/quick-templates" component={QuickTemplates} />
       <Route component={NotFound} />
     </Switch>
   );

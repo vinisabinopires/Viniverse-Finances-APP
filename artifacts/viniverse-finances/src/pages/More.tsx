@@ -7,7 +7,7 @@ import { clearAllData, db } from "@/hooks/use-finance";
 import {
   Download, Upload, Trash2, Info, Shield, AlertTriangle,
   RefreshCw, Target, TrendingUp, BarChart2, ChevronRight, FileBarChart2,
-  Lock, LockOpen, ShieldCheck, Timer, Wand2, CalendarDays,
+  Lock, LockOpen, ShieldCheck, Timer, Wand2, CalendarDays, Layers,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PinSetupDrawer, type PinSetupMode } from "@/components/PinSetupDrawer";
@@ -57,13 +57,13 @@ export default function More() {
   // ── Export ────────────────────────────────────────────────────────────────
   const handleExport = async () => {
     try {
-      const [accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots, weeklyPlans] = await Promise.all([
+      const [accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots, weeklyPlans, quickTemplates] = await Promise.all([
         db.accounts.toArray(), db.transactions.toArray(), db.budgets.toArray(),
         db.recurringRules.toArray(), db.financialGoals.toArray(),
-        db.netWorthSnapshots.toArray(), db.weeklyPlans.toArray(),
+        db.netWorthSnapshots.toArray(), db.weeklyPlans.toArray(), db.quickTemplates.toArray(),
       ]);
       // NOTE: PIN hash/salt is intentionally excluded from export
-      const data = { accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots, weeklyPlans, exportedAt: new Date().toISOString(), version: 6 };
+      const data = { accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots, weeklyPlans, quickTemplates, exportedAt: new Date().toISOString(), version: 7 };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
@@ -96,6 +96,7 @@ export default function More() {
       const financialGoals    = Array.isArray(p.financialGoals)    ? (p.financialGoals    as unknown[]) : [];
       const netWorthSnapshots = Array.isArray(p.netWorthSnapshots) ? (p.netWorthSnapshots as unknown[]) : [];
       const weeklyPlans       = Array.isArray(p.weeklyPlans)       ? (p.weeklyPlans       as unknown[]) : [];
+      const quickTemplates    = Array.isArray(p.quickTemplates)    ? (p.quickTemplates    as unknown[]) : [];
       await clearAllData();
       await db.accounts.bulkAdd(accounts      as Parameters<typeof db.accounts.bulkAdd>[0]);
       await db.transactions.bulkAdd(transactions as Parameters<typeof db.transactions.bulkAdd>[0]);
@@ -104,11 +105,12 @@ export default function More() {
       if (financialGoals.length)    await db.financialGoals.bulkAdd(financialGoals as Parameters<typeof db.financialGoals.bulkAdd>[0]);
       if (netWorthSnapshots.length) await db.netWorthSnapshots.bulkAdd(netWorthSnapshots as Parameters<typeof db.netWorthSnapshots.bulkAdd>[0]);
       if (weeklyPlans.length)       await db.weeklyPlans.bulkAdd(weeklyPlans       as Parameters<typeof db.weeklyPlans.bulkAdd>[0]);
+      if (quickTemplates.length)    await db.quickTemplates.bulkAdd(quickTemplates  as Parameters<typeof db.quickTemplates.bulkAdd>[0]);
       // NOTE: PIN settings are intentionally NOT imported — they stay as-is
       localStorage.setItem('viniverse-onboarded', 'true');
       toast({
         title: "Import successful",
-        description: `${accounts.length} accounts, ${transactions.length} transactions, ${budgets.length} budgets, ${recurringRules.length} rules, ${financialGoals.length} goals, ${netWorthSnapshots.length} snapshots, ${weeklyPlans.length} plans.`,
+        description: `${accounts.length} accounts, ${transactions.length} transactions, ${budgets.length} budgets, ${recurringRules.length} rules, ${financialGoals.length} goals, ${netWorthSnapshots.length} snapshots, ${weeklyPlans.length} plans, ${quickTemplates.length} templates.`,
       });
       setTimeout(() => { window.location.reload(); }, 1200);
     } catch { toast({ title: "Import failed", description: "Something went wrong while restoring your data.", variant: "destructive" }); }
@@ -150,9 +152,10 @@ export default function More() {
           <h3 className="text-xs font-medium text-muted-foreground px-1 uppercase tracking-wide">Features</h3>
           <div className="glass-card rounded-2xl overflow-hidden divide-y divide-white/10 border border-white/10">
             {[
-              { href: "/setup",           icon: <Wand2         className="w-4 h-4 text-purple-400" />,  bg: "bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-purple-500/10", title: "Real Life Setup",        desc: "Set up your real accounts, income, bills, and goals" },
-              { href: "/calendar",        icon: <CalendarDays  className="w-4 h-4 text-rose-400" />,   bg: "bg-rose-500/10",    title: "Cashflow Calendar",       desc: "See upcoming income, bills, and daily money flow." },
-              { href: "/recurring",       icon: <RefreshCw     className="w-4 h-4 text-indigo-400" />,  bg: "bg-indigo-500/10",  title: "Recurring Transactions", desc: "Automate income and expense rules" },
+              { href: "/setup",            icon: <Wand2         className="w-4 h-4 text-purple-400" />,  bg: "bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-purple-500/10", title: "Real Life Setup",         desc: "Set up your real accounts, income, bills, and goals" },
+              { href: "/calendar",         icon: <CalendarDays  className="w-4 h-4 text-rose-400" />,   bg: "bg-rose-500/10",    title: "Cashflow Calendar",        desc: "See upcoming income, bills, and daily money flow." },
+              { href: "/quick-templates",  icon: <Layers        className="w-4 h-4 text-violet-400" />, bg: "bg-violet-500/10",  title: "Quick Add Templates",      desc: "Create shortcuts for frequent income and expenses." },
+              { href: "/recurring",        icon: <RefreshCw     className="w-4 h-4 text-indigo-400" />,  bg: "bg-indigo-500/10",  title: "Recurring Transactions",  desc: "Automate income and expense rules" },
               { href: "/goals",           icon: <Target        className="w-4 h-4 text-emerald-400" />, bg: "bg-emerald-500/10", title: "Financial Goals",         desc: "Track savings targets and milestones" },
               { href: "/net-worth",       icon: <TrendingUp    className="w-4 h-4 text-cyan-400" />,   bg: "bg-cyan-500/10",    title: "Net Worth Tracker",       desc: "Monitor and snapshot financial growth" },
               { href: "/weekly-cashflow", icon: <BarChart2     className="w-4 h-4 text-violet-400" />, bg: "bg-violet-500/10",  title: "Weekly Cashflow",         desc: "Plan and track money week by week" },

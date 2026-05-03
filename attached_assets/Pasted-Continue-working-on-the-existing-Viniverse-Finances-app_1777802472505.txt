@@ -1,0 +1,204 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.3 — Quick Add Templates.
+
+Important direction:
+Do NOT work on CSV export, PDF export, external exports, cloud sync, biometric auth, bank integrations, or AI APIs in this phase. We are improving the in-app daily experience.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, cashflow calendar, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Add customizable Quick Add Templates so the user can quickly create common transactions like Coffee, Gas, Groceries, Lunch, Amazon, Takeout, Salary adjustment, etc., with prefilled transaction data.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, biometric auth, external services, CSV export, or PDF export.
+- Do not break existing data.
+- Do not break backup/import/export.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+- Templates should help prefill a transaction. They should not silently create transactions without user confirmation.
+
+1. Database
+Add a new Dexie table if appropriate:
+quickTemplates
+
+Upgrade schema safely to the next version.
+
+QuickTemplate fields:
+- id
+- name
+- type: INCOME or EXPENSE
+- amountCents optional
+- currencyCode: USD or BRL
+- accountId optional
+- category
+- description optional
+- notes optional
+- icon optional string
+- color optional string
+- isActive boolean
+- sortOrder number
+- createdAt
+- updatedAt
+
+Rules:
+- Existing data must remain untouched.
+- Old backups without quickTemplates must still import safely.
+- Clear All Data should clear quickTemplates with the rest of financial data.
+- PIN settings must remain untouched.
+
+2. Hooks/helpers
+In use-finance or an appropriate helper file, add:
+- useLiveQuickTemplates
+- addQuickTemplate
+- updateQuickTemplate
+- deleteQuickTemplate
+- maybe reorderQuickTemplates if simple
+
+Keep implementation consistent with existing hooks.
+
+3. Quick Templates management page
+Create a new route:
+- /quick-templates
+
+Add a feature card in More/Settings:
+- “Quick Add Templates”
+- Subtitle: “Create shortcuts for frequent income and expenses.”
+
+Page behavior:
+- List active templates first
+- Show inactive templates separately or with muted style
+- Add template button
+- Edit template
+- Delete template
+- Toggle active/inactive
+- Optional simple move up/down buttons for sort order
+
+Template form fields:
+- name
+- type: Expense / Income
+- amount optional
+- currency
+- account
+- category
+- description
+- notes
+- icon selection from simple emoji/icon options:
+  Coffee, Gas, Groceries, Food, Shopping, Home, Car, Health, Entertainment, Salary, Custom
+- color/style option if simple
+
+Do not overcomplicate.
+
+4. Dashboard integration
+Add a compact “Quick Add Templates” section near the Dashboard Quick Actions area.
+
+Behavior:
+- Show up to 6 active templates
+- Each template appears as a small rounded glass button/card
+- Tapping a template opens the existing TransactionDrawer with fields prefilled from the template
+- The user must still tap Save Transaction to confirm
+- If a template has no amount, amount field should be empty and focused if possible
+- If accountId is missing or deleted, show graceful fallback and let user choose an account
+
+Add CTA:
+- “Manage”
+- links to /quick-templates
+
+5. Transactions page integration
+Optional but useful:
+- Add a small “Templates” button or section near Add Transaction
+- Tapping a template opens the same prefilled transaction drawer
+
+Do this only if it fits cleanly. Dashboard integration is the priority.
+
+6. TransactionDrawer support for prefilled values
+Update TransactionDrawer/TransactionForm only as needed to support initial values:
+- initial type
+- initial amount
+- initial currency
+- initial accountId
+- initial category
+- initial description
+- initial notes
+
+Preserve:
+- existing add/edit transaction flow
+- scroll fixes
+- Save/Cancel visibility
+- double-submit protection
+- recurring badge behavior
+
+7. Suggested default templates
+If no templates exist, show suggested starter templates as empty-state suggestions.
+
+Do not auto-create them unless the user taps.
+
+Suggestions:
+- Coffee — Expense — Food
+- Groceries — Expense — Groceries
+- Gas — Expense — Transportation
+- Takeout — Expense — Dining
+- Amazon — Expense — Shopping
+- Salary — Income — Salary
+
+User can tap “Use this template” to create one.
+
+8. Backup/import/export
+Update JSON backup/export/import to include quickTemplates.
+
+Use next backup version if the app tracks it.
+
+Import behavior:
+- old backups without quickTemplates should work
+- invalid quickTemplates should not crash import
+- missing arrays default to []
+- PIN hash/salt must not be included
+
+9. Empty states
+If no templates exist:
+- Dashboard Quick Add Templates section should show:
+  “Create shortcuts for frequent transactions”
+  button: “Create Templates”
+- Quick Templates page should show starter suggestions
+
+10. UI polish
+Keep dark iOS-like glassmorphism.
+Template buttons should be fast, touch-friendly, and visually distinct.
+Avoid making the Dashboard noisy.
+Use compact cards.
+Make mobile experience smooth.
+
+11. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- More → Quick Add Templates opens /quick-templates
+- Create an Expense template with amount, category, account
+- Create an Income template
+- Dashboard shows active templates
+- Tapping template opens transaction drawer prefilled
+- Save Transaction creates the correct transaction
+- Cancel closes without creating transaction
+- Template with no amount opens drawer with blank amount
+- Template with deleted account does not crash
+- Edit template works
+- Toggle active hides/shows template on Dashboard
+- Delete template works
+- Backup export includes quickTemplates
+- Import old backup without quickTemplates still works
+- Clear All Data clears templates
+- Existing pages still work:
+  Dashboard, Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, Calendar, Setup, More, PIN Lock, PWA, Backup/Import/Export
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files created
+- files updated
+- database schema changes
+- quick template behavior added
+- Dashboard integration
+- backup/import changes
+- what I should test manually next

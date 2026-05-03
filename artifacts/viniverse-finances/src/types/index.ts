@@ -106,3 +106,20 @@ export interface RecurringRule {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface QuickTemplate {
+  id: string;
+  name: string;
+  type: 'INCOME' | 'EXPENSE';
+  amountCents?: number;
+  currencyCode: 'USD' | 'BRL';
+  accountId?: string;
+  category: string;
+  description?: string;
+  notes?: string;
+  icon?: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}

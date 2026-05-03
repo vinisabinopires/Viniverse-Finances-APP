@@ -3,7 +3,7 @@ import { liveQuery } from 'dexie';
 import { db } from '../db/db';
 import type {
   Account, Transaction, Budget, RecurringRule, RecurringFrequency,
-  FinancialGoal, NetWorthSnapshot, NetWorthAccountBreakdown, WeeklyPlan,
+  FinancialGoal, NetWorthSnapshot, NetWorthAccountBreakdown, WeeklyPlan, QuickTemplate,
 } from '../types';
 
 export { db };
@@ -40,6 +40,9 @@ export function useLiveSnapshots(): NetWorthSnapshot[] {
 }
 export function useLiveWeeklyPlans(): WeeklyPlan[] {
   return useDexieLiveQuery(() => db.weeklyPlans.orderBy('weekStartDate').reverse().toArray(), []);
+}
+export function useLiveQuickTemplates(): QuickTemplate[] {
+  return useDexieLiveQuery(() => db.quickTemplates.orderBy('sortOrder').toArray(), []);
 }
 
 // ─── Week helpers ─────────────────────────────────────────────────────────────
@@ -281,6 +284,19 @@ export async function deleteWeeklyPlan(id: string) {
   await db.weeklyPlans.delete(id);
 }
 
+// ─── Quick Templates ──────────────────────────────────────────────────────────
+
+export async function addQuickTemplate(data: Omit<QuickTemplate, 'id' | 'createdAt' | 'updatedAt'>) {
+  const now = new Date().toISOString();
+  await db.quickTemplates.add({ id: crypto.randomUUID(), ...data, createdAt: now, updatedAt: now });
+}
+export async function updateQuickTemplate(id: string, data: Partial<QuickTemplate>) {
+  await db.quickTemplates.update(id, { ...data, updatedAt: new Date().toISOString() });
+}
+export async function deleteQuickTemplate(id: string) {
+  await db.quickTemplates.delete(id);
+}
+
 // ─── Clear All ────────────────────────────────────────────────────────────────
 
 export async function clearAllData() {
@@ -291,5 +307,6 @@ export async function clearAllData() {
   await db.financialGoals.clear();
   await db.netWorthSnapshots.clear();
   await db.weeklyPlans.clear();
+  await db.quickTemplates.clear();
   localStorage.removeItem('viniverse-seeded');
 }

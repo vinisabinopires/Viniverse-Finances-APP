@@ -9,7 +9,7 @@ import { MonthSelector } from "@/components/MonthSelector";
 import { TransactionCard } from "@/components/TransactionCard";
 import {
   useLiveAccounts, useLiveTransactions, useLiveBudgets, useLiveRecurringRules,
-  useLiveGoals, useLiveSnapshots, useLiveWeeklyPlans,
+  useLiveGoals, useLiveSnapshots, useLiveWeeklyPlans, useLiveQuickTemplates,
   calcBudgetSpent, calcNetWorth, getNextOccurrenceAfter,
   getWeekStartDate, getWeekEndDate, toDateStr, generateDueTransactions,
   getOccurrenceDatesForRange,
@@ -19,11 +19,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw,
   BarChart2, Zap, FileBarChart2, Sparkles, ChevronDown, ChevronUp,
-  Minus, Plus, Camera, Download, Rows3, CalendarDays,
+  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import { useToast } from "@/hooks/use-toast";
-import type { Transaction, RecurringRule } from "@/types";
+import type { Transaction, RecurringRule, QuickTemplate } from "@/types";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -116,6 +116,7 @@ export default function Dashboard() {
   const [selectedTx, setSelectedTx]     = useState<Transaction | null>(null);
   const [qaOpen, setQaOpen]             = useState(false);
   const [qaType, setQaType]             = useState<"EXPENSE" | "INCOME">("EXPENSE");
+  const [qaTemplate, setQaTemplate]     = useState<QuickTemplate | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Compact mode (localStorage)
@@ -143,13 +144,14 @@ export default function Dashboard() {
     key in collapsed ? collapsed[key] : (SECTION_DEFAULTS[key] ?? false);
 
   // Data
-  const accounts       = useLiveAccounts();
-  const transactions   = useLiveTransactions();
-  const budgets        = useLiveBudgets();
-  const recurringRules = useLiveRecurringRules();
-  const goals          = useLiveGoals();
-  const snapshots      = useLiveSnapshots();
-  const weeklyPlans    = useLiveWeeklyPlans();
+  const accounts        = useLiveAccounts();
+  const transactions    = useLiveTransactions();
+  const budgets         = useLiveBudgets();
+  const recurringRules  = useLiveRecurringRules();
+  const goals           = useLiveGoals();
+  const snapshots       = useLiveSnapshots();
+  const weeklyPlans     = useLiveWeeklyPlans();
+  const quickTemplates  = useLiveQuickTemplates();
 
   // ─── Month calculations ──────────────────────────────────────────────────
   const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
@@ -260,7 +262,9 @@ export default function Dashboard() {
   }, [recurringRules, isGenerating, toast]);
 
   // ─── Quick action helpers ────────────────────────────────────────────────
-  const openQa = (type: "EXPENSE" | "INCOME") => { setQaType(type); setQaOpen(true); };
+  const openQa = (type: "EXPENSE" | "INCOME") => { setQaType(type); setQaTemplate(null); setQaOpen(true); };
+  const openQaWithTemplate = (t: QuickTemplate) => { setQaTemplate(t); setQaType(t.type); setQaOpen(true); };
+  const closeQa = () => { setQaOpen(false); setQaTemplate(null); };
 
   // ─── Layout spacing ──────────────────────────────────────────────────────
   const cardPad  = compact ? "p-4" : "p-5";
@@ -335,6 +339,51 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
+        </motion.div>
+
+        {/* ── Quick Templates ──────────────────────────────────────────── */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.01 }} className="glass-card rounded-2xl p-3" data-testid="card-quick-templates">
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <div className="flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Quick Templates</p>
+            </div>
+            <Link href="/quick-templates" className="text-xs text-primary hover:text-primary/80">Manage</Link>
+          </div>
+          {quickTemplates.filter((t) => t.isActive).length === 0 ? (
+            <div className="flex items-center justify-between py-1 px-1">
+              <p className="text-xs text-muted-foreground">Create shortcuts for frequent transactions</p>
+              <Link href="/quick-templates">
+                <button className="text-xs text-primary font-medium bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg transition-colors">
+                  Create
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-1.5">
+              {quickTemplates.filter((t) => t.isActive).slice(0, 6).map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => openQaWithTemplate(t)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all hover:bg-white/10 active:scale-95 ${
+                    t.type === "INCOME"
+                      ? "bg-emerald-500/5 border-emerald-500/15"
+                      : "bg-rose-500/5 border-rose-500/15"
+                  }`}
+                >
+                  <span className="text-base leading-none flex-shrink-0">{t.icon || (t.type === "INCOME" ? "💰" : "💳")}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold truncate">{t.name}</p>
+                    {t.amountCents ? (
+                      <p className="text-[10px] text-muted-foreground tabular-nums">{formatMoney(t.amountCents, t.currencyCode)}</p>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground">any amount</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* ── This Week ───────────────────────────────────────────────── */}
@@ -769,11 +818,13 @@ export default function Dashboard() {
 
       </div>
 
-      {/* ── Quick Add Drawer (controlled, type-aware) ────────────────────── */}
-      <Drawer open={qaOpen} onOpenChange={(o) => { if (!o) setQaOpen(false); }}>
+      {/* ── Quick Add Drawer (controlled, type-aware, template-aware) ────── */}
+      <Drawer open={qaOpen} onOpenChange={(o) => { if (!o) closeQa(); }}>
         <DrawerContent className="bg-background border-t border-white/10 text-foreground flex flex-col max-h-[92dvh]">
           <DrawerHeader className="px-4 pt-2 pb-2 flex-shrink-0">
-            <DrawerTitle>{qaType === "INCOME" ? "Add Income" : "Add Expense"}</DrawerTitle>
+            <DrawerTitle>
+              {qaTemplate ? qaTemplate.name : (qaType === "INCOME" ? "Add Income" : "Add Expense")}
+            </DrawerTitle>
           </DrawerHeader>
           <div
             className="flex-1 overflow-y-auto px-4"
@@ -782,11 +833,20 @@ export default function Dashboard() {
             {qaOpen && (
               <TransactionForm
                 defaultType={qaType}
+                initialValues={qaTemplate ? {
+                  type: qaTemplate.type,
+                  amount: qaTemplate.amountCents ? (qaTemplate.amountCents / 100).toFixed(2) : undefined,
+                  accountId: qaTemplate.accountId,
+                  category: qaTemplate.category,
+                  description: qaTemplate.description,
+                  notes: qaTemplate.notes,
+                } : undefined}
                 onSuccess={() => {
-                  setQaOpen(false);
-                  toast({ title: qaType === "INCOME" ? "Income added" : "Expense added" });
+                  const label = qaTemplate ? qaTemplate.name : (qaType === "INCOME" ? "Income" : "Expense");
+                  closeQa();
+                  toast({ title: `${label} saved` });
                 }}
-                onCancel={() => setQaOpen(false)}
+                onCancel={closeQa}
               />
             )}
           </div>

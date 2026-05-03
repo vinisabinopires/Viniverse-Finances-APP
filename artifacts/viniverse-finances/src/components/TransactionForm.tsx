@@ -22,14 +22,24 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+interface InitialValues {
+  type?: "INCOME" | "EXPENSE";
+  amount?: string;
+  accountId?: string;
+  category?: string;
+  description?: string;
+  notes?: string;
+}
+
 interface TransactionFormProps {
   onSuccess: () => void;
   onCancel?: () => void;
   defaultType?: "INCOME" | "EXPENSE";
   editTransaction?: Transaction;
+  initialValues?: InitialValues;
 }
 
-export function TransactionForm({ onSuccess, onCancel, defaultType = "EXPENSE", editTransaction }: TransactionFormProps) {
+export function TransactionForm({ onSuccess, onCancel, defaultType = "EXPENSE", editTransaction, initialValues }: TransactionFormProps) {
   const accounts = useLiveAccounts();
 
   const form = useForm<FormData>({
@@ -45,12 +55,12 @@ export function TransactionForm({ onSuccess, onCancel, defaultType = "EXPENSE", 
           occurredAt: editTransaction.occurredAt.slice(0, 10),
         }
       : {
-          type: defaultType,
-          amount: "",
-          accountId: accounts[0]?.id || "",
-          category: "",
-          description: "",
-          notes: "",
+          type: initialValues?.type ?? defaultType,
+          amount: initialValues?.amount ?? "",
+          accountId: initialValues?.accountId || accounts[0]?.id || "",
+          category: initialValues?.category ?? "",
+          description: initialValues?.description ?? "",
+          notes: initialValues?.notes ?? "",
           occurredAt: new Date().toISOString().slice(0, 10),
         },
   });
