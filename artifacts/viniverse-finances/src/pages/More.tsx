@@ -4,7 +4,10 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clearAllData, db } from "@/hooks/use-finance";
-import { Download, Upload, Trash2, Info, Shield, AlertTriangle, RefreshCw, Target, ChevronRight } from "lucide-react";
+import {
+  Download, Upload, Trash2, Info, Shield, AlertTriangle,
+  RefreshCw, Target, TrendingUp, ChevronRight,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function More() {
@@ -25,18 +28,22 @@ export default function More() {
 
   const handleExport = async () => {
     try {
-      const accounts       = await db.accounts.toArray();
-      const transactions   = await db.transactions.toArray();
-      const budgets        = await db.budgets.toArray();
-      const recurringRules = await db.recurringRules.toArray();
-      const financialGoals = await db.financialGoals.toArray();
-      const data = { accounts, transactions, budgets, recurringRules, financialGoals, exportedAt: new Date().toISOString(), version: 4 };
+      const accounts         = await db.accounts.toArray();
+      const transactions     = await db.transactions.toArray();
+      const budgets          = await db.budgets.toArray();
+      const recurringRules   = await db.recurringRules.toArray();
+      const financialGoals   = await db.financialGoals.toArray();
+      const netWorthSnapshots = await db.netWorthSnapshots.toArray();
+      const data = {
+        accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots,
+        exportedAt: new Date().toISOString(), version: 5,
+      };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
       const today = new Date().toISOString().slice(0, 10);
-      a.download = `viniverse-finances-backup-${today}.json`;
+      a.download  = `viniverse-finances-backup-${today}.json`;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: "Export successful", description: `Saved as viniverse-finances-backup-${today}.json` });
@@ -50,12 +57,9 @@ export default function More() {
     if (!file) return;
     e.target.value = "";
     let parsed: unknown;
-    try {
-      parsed = JSON.parse(await file.text());
-    } catch {
-      toast({ title: "Import failed", description: "The file is not valid JSON.", variant: "destructive" });
-      return;
-    }
+    try { parsed = JSON.parse(await file.text()); }
+    catch { toast({ title: "Import failed", description: "The file is not valid JSON.", variant: "destructive" }); return; }
+
     const p = parsed as Record<string, unknown>;
     if (typeof p !== "object" || p === null || !Array.isArray(p.accounts) || !Array.isArray(p.transactions)) {
       toast({ title: "Import failed", description: "The file doesn't look like a Viniverse backup.", variant: "destructive" });
@@ -63,19 +67,22 @@ export default function More() {
     }
     try {
       const { accounts, transactions } = p as { accounts: unknown[]; transactions: unknown[] };
-      const budgets        = Array.isArray(p.budgets)        ? (p.budgets        as unknown[]) : [];
-      const recurringRules = Array.isArray(p.recurringRules) ? (p.recurringRules as unknown[]) : [];
-      const financialGoals = Array.isArray(p.financialGoals) ? (p.financialGoals as unknown[]) : [];
+      const budgets           = Array.isArray(p.budgets)           ? (p.budgets           as unknown[]) : [];
+      const recurringRules    = Array.isArray(p.recurringRules)    ? (p.recurringRules    as unknown[]) : [];
+      const financialGoals    = Array.isArray(p.financialGoals)    ? (p.financialGoals    as unknown[]) : [];
+      const netWorthSnapshots = Array.isArray(p.netWorthSnapshots) ? (p.netWorthSnapshots as unknown[]) : [];
+
       await clearAllData();
-      await db.accounts.bulkAdd(accounts      as Parameters<typeof db.accounts.bulkAdd>[0]);
+      await db.accounts.bulkAdd(accounts as Parameters<typeof db.accounts.bulkAdd>[0]);
       await db.transactions.bulkAdd(transactions as Parameters<typeof db.transactions.bulkAdd>[0]);
-      if (budgets.length)        await db.budgets.bulkAdd(budgets              as Parameters<typeof db.budgets.bulkAdd>[0]);
-      if (recurringRules.length) await db.recurringRules.bulkAdd(recurringRules as Parameters<typeof db.recurringRules.bulkAdd>[0]);
-      if (financialGoals.length) await db.financialGoals.bulkAdd(financialGoals as Parameters<typeof db.financialGoals.bulkAdd>[0]);
+      if (budgets.length)           await db.budgets.bulkAdd(budgets              as Parameters<typeof db.budgets.bulkAdd>[0]);
+      if (recurringRules.length)    await db.recurringRules.bulkAdd(recurringRules as Parameters<typeof db.recurringRules.bulkAdd>[0]);
+      if (financialGoals.length)    await db.financialGoals.bulkAdd(financialGoals as Parameters<typeof db.financialGoals.bulkAdd>[0]);
+      if (netWorthSnapshots.length) await db.netWorthSnapshots.bulkAdd(netWorthSnapshots as Parameters<typeof db.netWorthSnapshots.bulkAdd>[0]);
       localStorage.setItem('viniverse-onboarded', 'true');
       toast({
         title: "Import successful",
-        description: `Restored ${accounts.length} accounts, ${transactions.length} transactions, ${budgets.length} budgets, ${recurringRules.length} rules, ${financialGoals.length} goals.`,
+        description: `Restored ${accounts.length} accounts, ${transactions.length} transactions, ${budgets.length} budgets, ${recurringRules.length} rules, ${financialGoals.length} goals, ${netWorthSnapshots.length} snapshots.`,
       });
       setTimeout(() => { window.location.reload(); }, 1200);
     } catch {
@@ -99,7 +106,7 @@ export default function More() {
             </div>
             <div>
               <h3 className="font-semibold">Viniverse – Finances</h3>
-              <p className="text-xs text-muted-foreground">Version 1.4.0 · Personal finance tracker</p>
+              <p className="text-xs text-muted-foreground">Version 1.5.0 · Personal finance tracker</p>
             </div>
           </div>
         </div>
@@ -129,6 +136,17 @@ export default function More() {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
             </Link>
+
+            <Link href="/net-worth" className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors">
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-sm">Net Worth Tracker</h3>
+                <p className="text-xs text-muted-foreground">Monitor and snapshot financial growth</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+            </Link>
           </div>
         </div>
 
@@ -153,7 +171,7 @@ export default function More() {
               </div>
               <div>
                 <h3 className="font-medium text-sm">Export Backup</h3>
-                <p className="text-xs text-muted-foreground">All data including goals and rules</p>
+                <p className="text-xs text-muted-foreground">All data including snapshots and goals</p>
               </div>
             </button>
             <button onClick={() => fileInputRef.current?.click()} data-testid="btn-import" className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left">
@@ -185,7 +203,7 @@ export default function More() {
               <div>
                 <p className="text-sm font-semibold text-rose-400">Confirm deletion</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  This will permanently erase all accounts, transactions, budgets, recurring rules, and financial goals. Type{" "}
+                  This will permanently erase all accounts, transactions, budgets, recurring rules, financial goals, and net worth snapshots. Type{" "}
                   <span className="font-mono font-bold text-rose-400">DELETE</span> to confirm.
                 </p>
               </div>

@@ -1,0 +1,183 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. Inspect the current codebase first and preserve the current React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, onboarding flow, transactions, accounts, budgets, recurring transaction system, financial goals system, backup/import/export, and current app behavior.
+
+Goal of this phase:
+Add a Net Worth Tracker that calculates current net worth from all accounts, supports USD and BRL separately, allows manual exchange rate conversion, and stores historical snapshots so the user can track financial growth over time.
+
+Important constraints:
+- Keep everything local-first using IndexedDB/Dexie.
+- Do not add backend, authentication, Firebase, Supabase, or paid APIs.
+- Do not use live exchange rate APIs yet.
+- Do not add heavy chart libraries.
+- Use simple CSS/Tailwind/SVG for charts.
+- Do not rebuild the app.
+- Do not break existing data, backup/import/export, goals, budgets, recurring rules, accounts, or transactions.
+- Do not add another bottom navigation item. Keep Net Worth accessible from More/Settings.
+
+1. Database changes
+Upgrade Dexie safely to the next schema version and add a netWorthSnapshots table.
+
+NetWorthSnapshot fields:
+- id
+- snapshotDate: YYYY-MM-DD
+- totalUsdCents
+- totalBrlCents
+- exchangeRateBrlPerUsd optional number
+- totalConvertedToUsdCents optional
+- totalConvertedToBrlCents optional
+- accountBreakdown array with:
+  - accountId
+  - accountName
+  - accountType
+  - currencyCode
+  - balanceCents
+- notes optional
+- createdAt
+- updatedAt
+
+Important:
+- Existing data must continue working.
+- Existing backups without netWorthSnapshots must still import correctly.
+- Clear All Data must clear netWorthSnapshots too.
+- Backup export/import must include netWorthSnapshots.
+
+2. Current net worth calculation
+Create helpers/hooks to calculate current net worth from accounts and transactions.
+
+Rules:
+- Current account balance = initialBalanceCents + income transactions - expense transactions for that account.
+- Group totals by currency:
+  - total USD
+  - total BRL
+- Do not mix USD and BRL unless user provides a manual exchange rate.
+- Manual exchange rate means:
+  - 1 USD = X BRL
+- If exchange rate exists:
+  - show approximate total converted to USD
+  - show approximate total converted to BRL
+- If no exchange rate exists:
+  - show USD and BRL separately.
+
+3. Net Worth page
+Create a new page called Net Worth.
+
+Do not add it to bottom nav.
+Instead:
+- Add a card/button in More/Settings: “Net Worth Tracker”
+- Clicking it navigates to /net-worth
+
+Net Worth page should show:
+
+A) Current Net Worth Overview
+- Total USD
+- Total BRL
+- Optional consolidated total using manual exchange rate
+- Account breakdown cards
+- Each account card shows:
+  - name
+  - type
+  - currency
+  - current calculated balance
+
+B) Manual exchange rate input
+- Field: “1 USD = ___ BRL”
+- Let user temporarily enter the rate to preview conversion.
+- Use this rate when creating a snapshot.
+- Keep it simple. No API.
+
+C) Historical snapshots
+- List previous snapshots sorted newest first.
+- Each snapshot shows:
+  - date
+  - USD total
+  - BRL total
+  - exchange rate if used
+  - consolidated total if available
+  - notes if available
+- Tap a snapshot to open details.
+- Allow deleting a snapshot with confirmation.
+
+D) Create snapshot button
+- Button: “Create Net Worth Snapshot”
+- When tapped:
+  - calculate current totals
+  - save snapshot with today’s date
+  - include account breakdown
+  - include manual exchange rate if provided
+  - allow optional notes
+- Prevent accidental duplicate snapshots for the same date:
+  - If a snapshot already exists for today, ask whether to replace/update it or cancel.
+
+4. Simple historical chart
+On the Net Worth page, add a simple line chart or bar chart using SVG or div/CSS only.
+
+Chart behavior:
+- Show historical net worth over time.
+- If snapshots have exchange rate data, use totalConvertedToUsdCents as the main chart value.
+- If no converted total exists, show separate mini trends for USD and BRL.
+- Keep chart compact and mobile-friendly.
+- No heavy chart library.
+
+5. Dashboard integration
+Add a compact “Net Worth” section to Dashboard.
+
+Show:
+- Current USD total
+- Current BRL total
+- If a recent exchange rate/snapshot exists, show estimated consolidated total
+- Show last snapshot date if available
+- Small CTA: “View Net Worth”
+
+Keep it compact so the Dashboard stays clean.
+
+6. More/Settings integration
+In More/Settings, update the Features section to include:
+- Recurring Transactions
+- Financial Goals
+- Net Worth Tracker
+
+Use polished glassmorphism cards.
+
+7. Backup/import/export
+Update backup export/import to include netWorthSnapshots.
+Use backup version 5 if needed.
+Import validation must handle:
+- old backups without budgets, recurringRules, financialGoals, or netWorthSnapshots
+- backups with all current data
+- invalid JSON safely without breaking the app
+
+8. UI polish
+- Keep the dark iOS-like glassmorphism style.
+- Make the Net Worth page feel premium and calm.
+- Use clear sections and elegant cards.
+- Make charts readable on mobile.
+- Forms should be comfortable on mobile.
+- Keep bottom nav unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+9. Testing
+Run TypeScript checks and fix all errors.
+Check console logs and fix runtime errors.
+
+Manually verify:
+- Net Worth page opens from More.
+- Current USD and BRL totals match account balances.
+- Manual exchange rate calculates converted totals correctly.
+- Create snapshot saves today’s totals.
+- Creating a second snapshot for the same date asks to replace/update or cancel.
+- Snapshot detail shows account breakdown.
+- Snapshot delete works.
+- Historical chart appears after snapshots exist.
+- Dashboard shows compact Net Worth section.
+- Export includes netWorthSnapshots.
+- Import restores netWorthSnapshots.
+- Clear All Data removes netWorthSnapshots too.
+- Existing Transactions, Accounts, Budgets, Recurring, Goals, Dashboard, and More still work.
+
+Deliverable:
+At the end, summarize:
+- files created
+- files updated
+- database schema changes
+- net worth behavior
+- backup/import changes
+- what I should test manually next

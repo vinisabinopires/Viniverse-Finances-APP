@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react';
 import { liveQuery } from 'dexie';
 import { db } from '../db/db';
-import type { Account, Transaction, Budget, RecurringRule, RecurringFrequency, FinancialGoal } from '../types';
+import type {
+  Account, Transaction, Budget, RecurringRule, RecurringFrequency,
+  FinancialGoal, NetWorthSnapshot, NetWorthAccountBreakdown,
+} from '../types';
 
 export { db };
 
 function useDexieLiveQuery<T>(querier: () => T | Promise<T>, defaultValue: T): T {
   const [result, setResult] = useState<T>(defaultValue);
-
   useEffect(() => {
-    const subscription = liveQuery(querier).subscribe({
-      next: (value) => setResult(value as T),
+    const sub = liveQuery(querier).subscribe({
+      next: (v) => setResult(v as T),
       error: (err) => console.error('Dexie liveQuery error:', err),
     });
-    return () => subscription.unsubscribe();
+    return () => sub.unsubscribe();
   }, []);
-
   return result;
 }
 
@@ -37,6 +38,13 @@ export function useLiveRecurringRules(): RecurringRule[] {
 
 export function useLiveGoals(): FinancialGoal[] {
   return useDexieLiveQuery(() => db.financialGoals.orderBy('createdAt').toArray(), []);
+}
+
+export function useLiveSnapshots(): NetWorthSnapshot[] {
+  return useDexieLiveQuery(
+    () => db.netWorthSnapshots.orderBy('snapshotDate').reverse().toArray(),
+    [],
+  );
 }
 
 // ─── Transactions ────────────────────────────────────────────────────────────
@@ -120,8 +128,6 @@ export async function deleteRecurringRule(id: string) {
   await db.recurringRules.delete(id);
 }
 
-// ─── Generation logic ─────────────────────────────────────────────────────────
-
 function advanceDate(date: Date, frequency: RecurringFrequency): void {
   switch (frequency) {
     case 'WEEKLY':   date.setDate(date.getDate() + 7);         break;
@@ -133,10 +139,9 @@ function advanceDate(date: Date, frequency: RecurringFrequency): void {
 
 function getOccurrenceDates(rule: RecurringRule, upTo: Date): string[] {
   const dates: string[] = [];
-  const start = new Date(rule.startDate + 'T12:00:00');
+  const start   = new Date(rule.startDate + 'T12:00:00');
   const endDate = rule.endDate ? new Date(rule.endDate + 'T12:00:00') : null;
-  const cutoff = endDate && endDate < upTo ? endDate : upTo;
-
+  const cutoff  = endDate && endDate < upTo ? endDate : upTo;
   let current = new Date(start);
   let guard = 0;
   while (current <= cutoff && guard < 500) {
@@ -148,69 +153,36 @@ function getOccurrenceDates(rule: RecurringRule, upTo: Date): string[] {
 }
 
 export function getNextOccurrenceAfter(rule: RecurringRule, after: Date): Date | null {
-  const start = new Date(rule.startDate + 'T12:00:00');
+  const start   = new Date(rule.startDate + 'T12:00:00');
   const endDate = rule.endDate ? new Date(rule.endDate + 'T12:00:00') : null;
-
   let current = new Date(start);
   let guard = 0;
-  while (current <= after && guard < 1000) {
-    advanceDate(current, rule.frequency);
-    guard++;
-  }
-
+  while (current <= after && guard < 1000) { advanceDate(current, rule.frequency); guard++; }
   if (endDate && current > endDate) return null;
   return current;
 }
 
-export interface GenerateResult {
-  created: number;
-  skipped: number;
-}
+export interface GenerateResult { created: number; skipped: number; }
 
 export async function generateDueTransactions(rules: RecurringRule[]): Promise<GenerateResult> {
   const now = new Date().toISOString();
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  let created = 0;
-  let skipped = 0;
-
+  const today = new Date(); today.setHours(23, 59, 59, 999);
+  let created = 0; let skipped = 0;
   for (const rule of rules) {
     if (!rule.isActive) continue;
-
-    const dates = getOccurrenceDates(rule, today);
-
-    for (const dateStr of dates) {
+    for (const dateStr of getOccurrenceDates(rule, today)) {
       const key = `${rule.id}:${dateStr}`;
-      const existing = await db.transactions
-        .where('recurringOccurrenceKey')
-        .equals(key)
-        .count();
-
-      if (existing > 0) {
-        skipped++;
-        continue;
-      }
-
+      if (await db.transactions.where('recurringOccurrenceKey').equals(key).count() > 0) { skipped++; continue; }
       await db.transactions.add({
-        id: crypto.randomUUID(),
-        type: rule.type,
-        amountCents: rule.amountCents,
-        currencyCode: rule.currencyCode,
-        accountId: rule.accountId,
-        category: rule.category,
-        description: rule.description || rule.name,
-        notes: rule.notes,
-        occurredAt: new Date(dateStr + 'T12:00:00').toISOString(),
-        recurringRuleId: rule.id,
-        recurringOccurrenceKey: key,
-        createdAt: now,
-        updatedAt: now,
+        id: crypto.randomUUID(), type: rule.type, amountCents: rule.amountCents,
+        currencyCode: rule.currencyCode, accountId: rule.accountId,
+        category: rule.category, description: rule.description || rule.name,
+        notes: rule.notes, occurredAt: new Date(dateStr + 'T12:00:00').toISOString(),
+        recurringRuleId: rule.id, recurringOccurrenceKey: key, createdAt: now, updatedAt: now,
       });
       created++;
     }
   }
-
   return { created, skipped };
 }
 
@@ -230,6 +202,55 @@ export async function deleteGoal(id: string) {
   await db.financialGoals.delete(id);
 }
 
+// ─── Net Worth ────────────────────────────────────────────────────────────────
+
+/** Calculate a single account's current balance from initial + all its transactions. */
+export function calcAccountBalance(account: Account, transactions: Transaction[]): number {
+  const accTx  = transactions.filter((t) => t.accountId === account.id);
+  const income  = accTx.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amountCents, 0);
+  const expense = accTx.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amountCents, 0);
+  return account.initialBalanceCents + income - expense;
+}
+
+export interface NetWorthTotals {
+  totalUsdCents: number;
+  totalBrlCents: number;
+  breakdown: NetWorthAccountBreakdown[];
+}
+
+export function calcNetWorth(accounts: Account[], transactions: Transaction[]): NetWorthTotals {
+  let totalUsdCents = 0;
+  let totalBrlCents = 0;
+  const breakdown: NetWorthAccountBreakdown[] = [];
+  for (const account of accounts) {
+    const balanceCents = calcAccountBalance(account, transactions);
+    if (account.currencyCode === 'USD') totalUsdCents += balanceCents;
+    else totalBrlCents += balanceCents;
+    breakdown.push({
+      accountId:   account.id,
+      accountName: account.name,
+      accountType: account.type,
+      currencyCode: account.currencyCode,
+      balanceCents,
+    });
+  }
+  return { totalUsdCents, totalBrlCents, breakdown };
+}
+
+export async function addSnapshot(data: Omit<NetWorthSnapshot, 'id' | 'createdAt' | 'updatedAt'>) {
+  const now = new Date().toISOString();
+  await db.netWorthSnapshots.add({ id: crypto.randomUUID(), ...data, createdAt: now, updatedAt: now });
+}
+
+export async function updateSnapshot(id: string, data: Partial<NetWorthSnapshot>) {
+  const now = new Date().toISOString();
+  await db.netWorthSnapshots.update(id, { ...data, updatedAt: now });
+}
+
+export async function deleteSnapshot(id: string) {
+  await db.netWorthSnapshots.delete(id);
+}
+
 // ─── Clear All ────────────────────────────────────────────────────────────────
 
 export async function clearAllData() {
@@ -238,5 +259,6 @@ export async function clearAllData() {
   await db.budgets.clear();
   await db.recurringRules.clear();
   await db.financialGoals.clear();
+  await db.netWorthSnapshots.clear();
   localStorage.removeItem('viniverse-seeded');
 }

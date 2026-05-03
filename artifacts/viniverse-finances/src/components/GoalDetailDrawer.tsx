@@ -11,7 +11,7 @@ import { formatMoney, formatDate } from "@/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Archive, ArchiveRestore } from "lucide-react";
 import type { FinancialGoal } from "@/types";
-import { GOAL_TYPE_META } from "@/pages/Goals";
+import { GOAL_TYPE_META } from "@/constants/goals";
 
 interface GoalDetailDrawerProps {
   goal: FinancialGoal | null;

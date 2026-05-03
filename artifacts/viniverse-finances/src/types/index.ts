@@ -53,6 +53,28 @@ export interface FinancialGoal {
   updatedAt: string;
 }
 
+export interface NetWorthAccountBreakdown {
+  accountId: string;
+  accountName: string;
+  accountType: string;
+  currencyCode: 'USD' | 'BRL';
+  balanceCents: number;
+}
+
+export interface NetWorthSnapshot {
+  id: string;
+  snapshotDate: string; // YYYY-MM-DD
+  totalUsdCents: number;
+  totalBrlCents: number;
+  exchangeRateBrlPerUsd?: number;
+  totalConvertedToUsdCents?: number;
+  totalConvertedToBrlCents?: number;
+  accountBreakdown: NetWorthAccountBreakdown[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RecurringRule {
   id: string;
   name: string;
