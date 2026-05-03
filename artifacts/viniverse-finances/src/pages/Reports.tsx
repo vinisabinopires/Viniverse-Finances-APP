@@ -758,6 +758,24 @@ export default function Reports() {
           )}
         </motion.div>
 
+        {/* ── Budget Coach link ── */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }} className="glass-card p-4 rounded-2xl border border-indigo-500/15 bg-indigo-500/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+              <Lightbulb className="w-4 h-4 text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Budget Coach</p>
+              <p className="text-xs text-muted-foreground">See spending risks and guardrails.</p>
+            </div>
+          </div>
+          <Link href="/coach">
+            <button className="text-xs font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/15 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 flex-shrink-0 ml-3">
+              Open <ChevronRight className="w-3 h-3" />
+            </button>
+          </Link>
+        </motion.div>
+
         {/* ── Insights ── */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.21 }} className="glass-card p-5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
           <SectionHeader icon={<Lightbulb className="w-4 h-4 text-indigo-400" />} title="Insights" />

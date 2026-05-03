@@ -1,0 +1,241 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.6 - Budget Coach & Spending Guardrails.
+
+Important direction:
+Do NOT add CSV export, PDF export, cloud sync, biometric auth, bank integrations, external APIs, AI APIs, bottom navigation changes, or duplicate calendar views in this phase.
+Do NOT create another Bills Calendar. The app already has Cashflow Calendar.
+Do NOT change the database schema unless absolutely necessary.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, subscriptions, transfers, financial goals, net worth snapshots, weekly cashflow, monthly reports, cashflow calendar, quick templates, transfer insights, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Add a deterministic Budget Coach / Spending Guardrails feature that helps the user understand budget risk, spending pace, fixed commitment pressure, and practical next actions without using AI or external services.
+
+Important financial rules:
+- Transfers are not expenses and must not affect budget coach spending calculations.
+- Recurring income is income.
+- Recurring expenses are fixed commitments, but should only count as actual spending if generated as transactions.
+- Budget Coach should be advisory only. It should not modify transactions, budgets, recurring rules, transfers, or accounts automatically.
+
+1. Create Budget Coach page
+Create a new route:
+- /coach
+
+Page name:
+- Budget Coach
+
+Add a feature card in More/Settings:
+- "Budget Coach"
+- Subtitle: "See spending risks, budget pace, and practical guardrails."
+
+Do not add it to bottom navigation.
+
+2. Currency and month selector
+At the top of the page:
+- Month selector
+- Currency toggle USD / BRL
+
+All calculations must respect selected currency.
+Do not mix USD and BRL.
+
+3. Budget risk cards
+For each budget in the selected month and currency, calculate:
+
+- monthly limit
+- spent so far
+- remaining
+- percent used
+- day of month progress percent
+- expected spend by today based on linear pace
+- projected month-end spend based on current pace
+- projected over/under amount
+- daily remaining allowance
+
+Risk levels:
+- Safe: percent used is reasonably below month progress
+- Watch: spending is slightly ahead of pace
+- Risk: projected to exceed budget
+- Over: already over budget
+
+Use clear labels:
+- Safe
+- Watch
+- Risk
+- Over
+
+Do not overcomplicate. Deterministic math only.
+
+4. Spending pace insight
+Add a section:
+"Spending Pace"
+
+Show:
+- total budgeted amount
+- total spent against budgeted categories
+- total remaining
+- projected month-end spending
+- number of categories at risk
+- number of categories over budget
+
+Add plain-language insights like:
+- "Dining is ahead of pace."
+- "Groceries has $X left, about $Y/day."
+- "Shopping is already over budget."
+
+No AI. Use deterministic templates.
+
+5. Fixed commitment pressure
+Use active recurring expense rules from the Subscription Center logic.
+
+Show:
+- estimated monthly fixed commitments in selected currency
+- estimated recurring income in selected currency
+- fixed commitments as percent of recurring income, if income exists
+- remaining estimated flexible income after fixed commitments
+
+Risk labels:
+- Comfortable
+- Tight
+- Heavy
+- Critical
+
+Example:
+- Comfortable: fixed commitments below 35% of recurring income
+- Tight: 35% to 50%
+- Heavy: 50% to 70%
+- Critical: above 70%
+
+If no recurring income exists, show:
+"Add recurring income to calculate commitment pressure."
+
+6. Upcoming pressure
+Use recurring rules and existing occurrence helpers.
+
+Show upcoming active recurring expense occurrences within the next 7 days:
+- date
+- name
+- amount
+- account
+- status Pending / Generated / Upcoming
+
+Also show:
+- total due next 7 days
+- number of bills due
+
+This should not generate transactions.
+Add CTA:
+- "View Calendar"
+- "View Subscriptions"
+
+7. Missing budget detection
+Look at current month transactions in selected currency.
+
+Find expense categories that have spending but no budget for the selected month.
+
+Show:
+"Categories with spending but no budget"
+
+For each:
+- category
+- spent this month
+- suggested starter budget
+
+Suggested starter budget:
+- max(spent so far, projected month-end spend rounded up to a simple amount)
+Keep the suggestion display-only.
+
+Add CTA:
+- "Create Budget"
+link to /budgets
+
+Do not auto-create budgets.
+
+8. Coach alerts on Dashboard
+Add a compact Dashboard card:
+"Budget Coach"
+
+Show up to 3 most important alerts:
+Priority:
+1. Over budget categories
+2. Risk categories
+3. Heavy/Critical fixed commitment pressure
+4. Bills due in next 3 days
+5. Missing budgets for high-spend categories
+
+CTA:
+- "View Coach"
+link to /coach
+
+Keep it compact.
+Do not make Dashboard noisy.
+
+9. Reports integration
+Optional and only if low risk:
+On Monthly Reports, add a small link/card:
+"Budget Coach found X alerts this month"
+CTA to /coach
+
+Do not change existing report calculations.
+
+10. UI polish
+Keep the dark iOS-like glassmorphism style.
+Use tasteful colors:
+- emerald for Safe
+- amber for Watch
+- rose for Risk/Over
+- indigo/blue for neutral coach insights
+
+Make it easy to scan on iPhone.
+Use compact cards.
+Avoid walls of text.
+
+11. Data safety
+Handle safely:
+- no budgets
+- no transactions
+- no recurring income
+- no recurring expenses
+- no accounts
+- deleted/missing account references
+- invalid dates
+- month with no data
+- BRL and USD separately
+- categories with special characters
+- zero income
+- zero budget amount
+- day 1 of month
+- last day of month
+- transfers present in the database
+
+12. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- More → Budget Coach opens /coach
+- Month selector works
+- USD/BRL toggle works
+- Transfers do not affect spending or budget risk
+- Budget risk cards show correct spent/remaining/projected values
+- Over-budget category shows Over
+- Category ahead of pace shows Risk or Watch
+- Category under control shows Safe
+- Fixed commitment pressure uses recurring income and active recurring expenses only
+- Upcoming pressure shows next 7 days of recurring expenses
+- Missing budget detection finds categories with expenses but no budget
+- Dashboard Budget Coach card appears with top alerts
+- Dashboard remains clean and not too long
+- Existing pages still work:
+  Dashboard, Transactions, Accounts, Budgets, Recurring, Subscriptions, Transfers, Goals, Net Worth, Weekly Cashflow, Reports, Calendar, Quick Templates, Setup, More, PIN Lock, PWA, Backup/Import/Export
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files created
+- files updated
+- whether database schema changed
+- Budget Coach behavior
+- risk calculations
+- Dashboard integration
+- what I should test manually next

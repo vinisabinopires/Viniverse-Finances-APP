@@ -7,7 +7,7 @@ import { clearAllData, db } from "@/hooks/use-finance";
 import {
   Download, Upload, Trash2, Info, Shield, AlertTriangle,
   RefreshCw, Target, TrendingUp, BarChart2, ChevronRight, FileBarChart2,
-  Lock, LockOpen, ShieldCheck, Timer, Wand2, CalendarDays, Layers, ArrowLeftRight, Receipt,
+  Lock, LockOpen, ShieldCheck, Timer, Wand2, CalendarDays, Layers, ArrowLeftRight, Receipt, Lightbulb,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PinSetupDrawer, type PinSetupMode } from "@/components/PinSetupDrawer";
@@ -164,6 +164,7 @@ export default function More() {
           <div className="glass-card rounded-2xl overflow-hidden divide-y divide-white/10 border border-white/10">
             {[
               { href: "/setup",            icon: <Wand2         className="w-4 h-4 text-purple-400" />,  bg: "bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-purple-500/10", title: "Real Life Setup",         desc: "Set up your real accounts, income, bills, and goals" },
+              { href: "/coach",            icon: <Lightbulb     className="w-4 h-4 text-indigo-400" />, bg: "bg-indigo-500/10",  title: "Budget Coach",             desc: "See spending risks, budget pace, and practical guardrails." },
               { href: "/subscriptions",    icon: <Receipt       className="w-4 h-4 text-amber-400" />,   bg: "bg-amber-500/10",   title: "Subscription Center",      desc: "Track fixed bills, subscriptions, and monthly commitments." },
               { href: "/transfers",        icon: <ArrowLeftRight className="w-4 h-4 text-indigo-400" />, bg: "bg-indigo-500/10",  title: "Transfers",                desc: "Move money between accounts without counting it as income." },
               { href: "/calendar",         icon: <CalendarDays  className="w-4 h-4 text-rose-400" />,   bg: "bg-rose-500/10",    title: "Cashflow Calendar",        desc: "See upcoming income, bills, and daily money flow." },

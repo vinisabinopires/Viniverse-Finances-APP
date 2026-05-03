@@ -22,6 +22,7 @@ import CalendarPage from "@/pages/Calendar";
 import QuickTemplates from "@/pages/QuickTemplates";
 import Transfers from "@/pages/Transfers";
 import Subscriptions from "@/pages/Subscriptions";
+import BudgetCoach from "@/pages/BudgetCoach";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ function Router() {
       <Route path="/quick-templates" component={QuickTemplates} />
       <Route path="/transfers" component={Transfers} />
       <Route path="/subscriptions" component={Subscriptions} />
+      <Route path="/coach" component={BudgetCoach} />
       <Route component={NotFound} />
     </Switch>
   );

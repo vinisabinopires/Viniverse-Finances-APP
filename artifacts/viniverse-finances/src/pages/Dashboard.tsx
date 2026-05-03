@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw,
   BarChart2, Zap, FileBarChart2, Sparkles, ChevronDown, ChevronUp,
-  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers, ArrowLeftRight, Receipt,
+  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers, ArrowLeftRight, Receipt, Lightbulb,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import { useToast } from "@/hooks/use-toast";
@@ -244,6 +244,10 @@ export default function Dashboard() {
     .filter((x): x is { rule: RecurringRule; next: Date } => x.next !== null)
     .sort((a, b) => a.next.getTime() - b.next.getTime())[0] ?? null;
 
+  // ─── Budget Coach alerts (current month, USD) ────────────────────────────
+  const coachDayOfMonth  = today.getDate();
+  const coachDaysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+
   // ─── Budgets ─────────────────────────────────────────────────────────────
   const monthBudgets = budgets
     .filter((b) => b.month === currentMonth)
@@ -256,6 +260,60 @@ export default function Dashboard() {
   const topCategories     = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
   const maxCategoryAmount = topCategories[0]?.[1] || 1;
   const recentTransactions = currentMonthTx.slice(0, 5);
+
+  // ─── Budget Coach alerts ──────────────────────────────────────────────────
+  type CoachAlert = { label: string; color: "rose" | "amber" | "indigo" };
+  const coachAlerts: CoachAlert[] = [];
+  // 1. Over budget
+  for (const { budget, pct } of monthBudgets) {
+    if (pct >= 100) coachAlerts.push({ label: `${budget.category} is over budget`, color: "rose" });
+  }
+  // 2. Risk — projected to exceed
+  if (coachDayOfMonth > 1) {
+    for (const { budget, spent, pct } of monthBudgets) {
+      if (pct < 100 && spent > 0) {
+        const projected = Math.round(spent / coachDayOfMonth * coachDaysInMonth);
+        if (projected > budget.monthlyLimitCents) {
+          coachAlerts.push({ label: `${budget.category} trending over budget`, color: "amber" });
+        }
+      }
+    }
+  }
+  // 3. Heavy / Critical commitment pressure (USD)
+  const usdIncomeMonthly = recurringRules
+    .filter((r) => r.isActive && r.type === "INCOME" && r.currencyCode === "USD")
+    .reduce((s, r) => {
+      switch (r.frequency) {
+        case "WEEKLY":   return s + Math.round(r.amountCents * 52 / 12);
+        case "BIWEEKLY": return s + Math.round(r.amountCents * 26 / 12);
+        case "MONTHLY":  return s + r.amountCents;
+        case "YEARLY":   return s + Math.round(r.amountCents / 12);
+      }
+    }, 0);
+  if (usdIncomeMonthly > 0 && fixedUsdMonthlyCents > 0) {
+    const pressureRatio = fixedUsdMonthlyCents / usdIncomeMonthly;
+    if (pressureRatio >= 0.70)      coachAlerts.push({ label: "Critical fixed commitment load", color: "rose" });
+    else if (pressureRatio >= 0.50) coachAlerts.push({ label: "Heavy fixed commitment load", color: "amber" });
+  }
+  // 4. Bills due in the next 3 days (all currencies)
+  const in3Days = new Date(today); in3Days.setDate(today.getDate() + 3);
+  const billsIn3Count = recurringRules
+    .filter((r) => r.isActive && r.type === "EXPENSE")
+    .reduce((s, r) => s + getOccurrenceDatesForRange(r, today, in3Days).length, 0);
+  if (billsIn3Count > 0) {
+    coachAlerts.push({ label: `${billsIn3Count} bill${billsIn3Count !== 1 ? "s" : ""} due in 3 days`, color: "amber" });
+  }
+  // 5. Unbudgeted categories (USD)
+  const budgetedCatSet   = new Set(monthBudgets.map((b) => b.budget.category.toLowerCase()));
+  const missingCatCount  = new Set(
+    currentMonthTx
+      .filter((t) => t.type === "EXPENSE" && t.currencyCode === "USD" && !budgetedCatSet.has(t.category.toLowerCase()))
+      .map((t) => t.category)
+  ).size;
+  if (missingCatCount > 0) {
+    coachAlerts.push({ label: `${missingCatCount} unbudgeted categor${missingCatCount !== 1 ? "ies" : "y"}`, color: "indigo" });
+  }
+  const topCoachAlerts = coachAlerts.slice(0, 3);
 
   // ─── Generate Due ────────────────────────────────────────────────────────
   const handleGenerateDue = useCallback(async () => {
@@ -546,6 +604,40 @@ export default function Dashboard() {
             </p>
           )}
         </motion.div>
+
+        {/* ── Budget Coach alerts ──────────────────────────────────────── */}
+        {topCoachAlerts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
+            className="glass-card rounded-2xl p-3 border border-indigo-500/10"
+            data-testid="card-budget-coach"
+          >
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="flex items-center gap-1.5">
+                <Lightbulb className="w-3.5 h-3.5 text-indigo-400" />
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Budget Coach</p>
+              </div>
+              <Link href="/coach" className="text-xs text-primary hover:text-primary/80">View</Link>
+            </div>
+            <div className="space-y-1.5 px-1">
+              {topCoachAlerts.map((alert, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    alert.color === "rose" ? "bg-rose-400" : alert.color === "amber" ? "bg-amber-400" : "bg-indigo-400"
+                  }`} />
+                  <p className={`text-xs ${
+                    alert.color === "rose" ? "text-rose-300" : alert.color === "amber" ? "text-amber-300" : "text-indigo-300"
+                  }`}>{alert.label}</p>
+                </div>
+              ))}
+              <Link href="/coach" className="block pt-1">
+                <button className="text-[10px] font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/15 transition-colors px-2.5 py-1.5 rounded-lg">
+                  Open Coach →
+                </button>
+              </Link>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Balances ─────────────────────────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="glass-card p-6 rounded-3xl relative overflow-hidden" data-testid="card-total-balance">
