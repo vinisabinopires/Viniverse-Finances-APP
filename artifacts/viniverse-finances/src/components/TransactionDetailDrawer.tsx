@@ -65,31 +65,26 @@ export function TransactionDetailDrawer({ transaction, accounts, onClose }: Tran
         open={!!transaction}
         onOpenChange={(open) => { if (!open) handleClose(); }}
       >
-        <DrawerContent className="bg-background border-t border-white/10 text-foreground p-4 pb-safe max-h-[90dvh] overflow-y-auto">
+        <DrawerContent className="bg-background border-t border-white/10 text-foreground flex flex-col max-h-[92dvh]">
           {mode === "edit" && transaction ? (
             <>
-              <DrawerHeader className="px-0 pb-2">
-                <div className="flex items-center justify-between">
-                  <DrawerTitle>Edit Transaction</DrawerTitle>
-                  <button
-                    onClick={() => setMode("view")}
-                    className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors"
-                    data-testid="btn-cancel-edit-transaction"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <DrawerHeader className="px-4 pt-2 pb-2 flex-shrink-0">
+                <DrawerTitle>Edit Transaction</DrawerTitle>
               </DrawerHeader>
-              <div className="pb-8">
+              <div
+                className="flex-1 overflow-y-auto px-4"
+                style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))" }}
+              >
                 <TransactionForm
                   editTransaction={transaction}
                   onSuccess={handleEditSuccess}
+                  onCancel={() => setMode("view")}
                 />
               </div>
             </>
           ) : transaction ? (
             <>
-              <DrawerHeader className="px-0 pb-4">
+              <DrawerHeader className="px-4 pb-4 flex-shrink-0">
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${isIncome ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400"}`}>
                     {isIncome ? <ArrowDownRight className="w-6 h-6" /> : <ArrowUpRight className="w-6 h-6" />}
@@ -105,48 +100,53 @@ export function TransactionDetailDrawer({ transaction, accounts, onClose }: Tran
                 </div>
               </DrawerHeader>
 
-              <div className="space-y-1 mb-6">
-                <DetailRow icon={<Tag className="w-4 h-4" />} label="Category" value={transaction.category} />
-                <DetailRow
-                  icon={<Building2 className="w-4 h-4" />}
-                  label="Account"
-                  value={account ? `${account.name} · ${typeLabels[account.type] ?? account.type}` : transaction.accountId}
-                />
-                <DetailRow icon={<Calendar className="w-4 h-4" />} label="Date" value={formatDate(transaction.occurredAt)} />
-                {transaction.description && (
-                  <DetailRow icon={<FileText className="w-4 h-4" />} label="Description" value={transaction.description} />
-                )}
-                {transaction.notes && (
-                  <DetailRow icon={<StickyNote className="w-4 h-4" />} label="Notes" value={transaction.notes} />
-                )}
-              </div>
+              <div
+                className="flex-1 overflow-y-auto px-4"
+                style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 1.5rem))" }}
+              >
+                <div className="space-y-1 mb-6">
+                  <DetailRow icon={<Tag className="w-4 h-4" />} label="Category" value={transaction.category} />
+                  <DetailRow
+                    icon={<Building2 className="w-4 h-4" />}
+                    label="Account"
+                    value={account ? `${account.name} · ${typeLabels[account.type] ?? account.type}` : transaction.accountId}
+                  />
+                  <DetailRow icon={<Calendar className="w-4 h-4" />} label="Date" value={formatDate(transaction.occurredAt)} />
+                  {transaction.description && (
+                    <DetailRow icon={<FileText className="w-4 h-4" />} label="Description" value={transaction.description} />
+                  )}
+                  {transaction.notes && (
+                    <DetailRow icon={<StickyNote className="w-4 h-4" />} label="Notes" value={transaction.notes} />
+                  )}
+                </div>
 
-              <div className="text-xs text-muted-foreground space-y-0.5 mb-6 px-1">
-                <p>Created {formatDate(transaction.createdAt)}</p>
-                {transaction.updatedAt !== transaction.createdAt && (
-                  <p>Updated {formatDate(transaction.updatedAt)}</p>
-                )}
-              </div>
+                <div className="text-xs text-muted-foreground space-y-0.5 mb-6 px-1">
+                  <p>Created {formatDate(transaction.createdAt)}</p>
+                  {transaction.updatedAt !== transaction.createdAt && (
+                    <p>Updated {formatDate(transaction.updatedAt)}</p>
+                  )}
+                </div>
 
-              <div className="flex gap-3 pb-4">
-                <Button
-                  onClick={() => setMode("edit")}
-                  className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-foreground rounded-xl"
-                  variant="outline"
-                  data-testid="btn-edit-transaction"
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-                <Button
-                  onClick={() => setShowDelete(true)}
-                  variant="outline"
-                  className="flex-1 border-rose-500/30 bg-rose-500/5 text-rose-400 hover:bg-rose-500/15 hover:border-rose-500/50 rounded-xl"
-                  data-testid="btn-delete-transaction"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
+                <div className="flex gap-3 pb-4">
+                  <Button
+                    onClick={() => setMode("edit")}
+                    className="flex-1 bg-white/5 border border-white/10 hover:bg-white/10 text-foreground rounded-xl"
+                    variant="outline"
+                    data-testid="btn-edit-transaction"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    onClick={() => setShowDelete(true)}
+                    variant="outline"
+                    className="flex-1 border-rose-500/30 bg-rose-500/5 text-rose-400 hover:bg-rose-500/15 hover:border-rose-500/50 rounded-xl"
+                    data-testid="btn-delete-transaction"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </div>
               </div>
             </>
           ) : null}

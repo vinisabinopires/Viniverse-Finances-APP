@@ -1,0 +1,99 @@
+There is a critical UX bug in the existing Viniverse – Finances app.
+
+When the user taps the button to add a transaction, either Income or Expense, the transaction form opens but there is no visible button to confirm/save the operation.
+
+Do not rebuild the project from scratch.
+Do not redesign the app.
+Do not add new features.
+Only inspect and fix the add/edit transaction form/drawer/modal flow.
+
+Context:
+The app already has Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, PIN Lock, PWA, and Setup Wizard. Preserve everything.
+
+Bug:
+- User opens Add Transaction.
+- User fills Income or Expense data.
+- There is no visible Save/Add/Confirm button.
+- The user cannot complete the transaction.
+
+Tasks:
+
+1. Inspect the transaction creation flow
+Find all relevant files, likely:
+- src/pages/Transactions.tsx
+- src/components/TransactionDrawer.tsx
+- src/components/TransactionForm.tsx
+- src/components/TransactionDetailDrawer.tsx
+- any Button / Drawer / BottomSheet component used by the transaction form
+
+2. Fix the missing save button
+Ensure the add transaction form always shows clear action buttons:
+- Primary button: “Save Transaction” or “Add Transaction”
+- Secondary button: “Cancel”
+
+For edit mode:
+- Primary button: “Save Changes”
+- Secondary button: “Cancel”
+
+3. Mobile visibility
+Make sure the button area is always visible on iPhone/mobile:
+- The drawer/modal content should be scrollable if needed.
+- The action button area should not be hidden behind the bottom nav.
+- Add safe-area bottom padding if necessary.
+- If the form is inside a bottom sheet, add a sticky footer inside the drawer with the action buttons.
+- The footer should remain visible or reachable even when the form is long.
+
+4. Form submit behavior
+Make sure clicking the primary button:
+- validates required fields
+- prevents NaN or empty amount
+- saves the transaction using the existing add/update transaction logic
+- closes the drawer/modal after success
+- shows existing toast/success feedback if already used
+- does not create duplicates from double-click/double-tap
+- works for both Income and Expense
+
+5. Preserve current behavior
+Do not break:
+- transaction search/filter
+- transaction detail drawer
+- transaction edit flow
+- recurring transaction badge
+- account balance calculations
+- Dashboard totals
+- Budgets
+- Weekly Cashflow
+- Monthly Reports
+- Backup/import/export
+
+6. Check all related transaction entry points
+Verify that save/cancel buttons appear when opening transaction form from:
+- Transactions page
+- Dashboard recent transactions/add button if present
+- any floating action button that opens transaction creation
+- any edit transaction flow
+
+7. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime errors.
+
+Manually verify:
+- Open Add Income form → Save button visible → save works
+- Open Add Expense form → Save button visible → save works
+- Open Add Transaction on mobile viewport → button not hidden
+- Form scrolls correctly when keyboard is open or content is long
+- Cancel closes the form
+- Edit existing transaction → Save Changes button visible → update works
+- Double tapping Save does not duplicate transaction
+- Dashboard totals update after saving
+- Account balances update after saving
+- Budgets update after expense
+- Weekly Cashflow and Reports update
+
+Deliverable:
+Summarize:
+- files inspected
+- files updated
+- root cause of the missing button
+- exact fix applied
+- what I should test manually next

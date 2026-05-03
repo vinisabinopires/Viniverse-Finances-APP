@@ -24,11 +24,12 @@ type FormData = z.infer<typeof schema>;
 
 interface TransactionFormProps {
   onSuccess: () => void;
+  onCancel?: () => void;
   defaultType?: "INCOME" | "EXPENSE";
   editTransaction?: Transaction;
 }
 
-export function TransactionForm({ onSuccess, defaultType = "EXPENSE", editTransaction }: TransactionFormProps) {
+export function TransactionForm({ onSuccess, onCancel, defaultType = "EXPENSE", editTransaction }: TransactionFormProps) {
   const accounts = useLiveAccounts();
 
   const form = useForm<FormData>({
@@ -233,14 +234,32 @@ export function TransactionForm({ onSuccess, defaultType = "EXPENSE", editTransa
           )}
         />
 
-        <Button
-          type="submit"
-          data-testid="btn-save-transaction"
-          disabled={form.formState.isSubmitting}
-          className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
-        >
-          {form.formState.isSubmitting ? "Saving…" : editTransaction ? "Update Transaction" : "Save Transaction"}
-        </Button>
+        <div className="space-y-2 pt-1">
+          <Button
+            type="submit"
+            data-testid="btn-save-transaction"
+            disabled={form.formState.isSubmitting}
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl py-6 font-semibold disabled:opacity-60"
+          >
+            {form.formState.isSubmitting
+              ? "Saving…"
+              : editTransaction
+              ? "Save Changes"
+              : "Save Transaction"}
+          </Button>
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={form.formState.isSubmitting}
+              data-testid="btn-cancel-transaction"
+              className="w-full bg-white/5 border-white/10 hover:bg-white/10 text-foreground rounded-xl py-5 font-medium"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       </form>
     </Form>
   );
