@@ -153,12 +153,25 @@
   * {
     @apply border-border;
   }
+  /* Dark background on html prevents any white flash during initial load */
+  html {
+    background-color: #070d18;
+    color-scheme: dark;
+  }
   body {
     @apply font-sans antialiased bg-background text-foreground;
     background-image: radial-gradient(circle at top right, rgba(99, 102, 241, 0.1), transparent 40%),
                       radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.1), transparent 40%);
     background-attachment: fixed;
   }
+}
+
+/* Safe-area bottom padding utility for BottomNav and safe-area-aware components */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .glass-card {

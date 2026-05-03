@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#070d18" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#070d18"/>
+  <!-- Top glow -->
+  <ellipse cx="256" cy="72" rx="210" ry="96" fill="url(#glow)"/>
+  <!-- V letterform -->
+  <path d="M 124 154 L 256 368 L 388 154"
+        stroke="url(#grad)" stroke-width="56"
+        stroke-linecap="round" stroke-linejoin="round"
+        fill="none"/>
+  <!-- Accent dots -->
+  <circle cx="404" cy="112" r="13" fill="#818cf8" opacity="0.7"/>
+  <circle cx="100" cy="396" r="9" fill="#a855f7" opacity="0.5"/>
+  <circle cx="440" cy="316" r="7" fill="#6366f1" opacity="0.35"/>
+</svg>

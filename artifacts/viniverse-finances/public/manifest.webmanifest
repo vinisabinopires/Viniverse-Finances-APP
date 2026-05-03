@@ -1,0 +1,47 @@
+{
+  "name": "Viniverse – Finances",
+  "short_name": "Viniverse",
+  "description": "Personal finance tracker for income, expenses, goals, budgets, recurring transactions, and net worth.",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#070d18",
+  "background_color": "#070d18",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "lang": "en",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Add Transaction",
+      "url": "/transactions",
+      "description": "Go to Transactions page"
+    },
+    {
+      "name": "View Reports",
+      "url": "/reports",
+      "description": "Open Monthly Reports"
+    }
+  ]
+}

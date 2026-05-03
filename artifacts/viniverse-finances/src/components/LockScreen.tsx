@@ -79,7 +79,13 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   }, [onDigit]);
 
   return (
-    <div className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-between py-16 px-6 select-none">
+    <div
+      className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-between px-6 select-none"
+      style={{
+        paddingTop:    "max(4rem, calc(2rem + env(safe-area-inset-top,    0px)))",
+        paddingBottom: "max(4rem, calc(2rem + env(safe-area-inset-bottom, 0px)))",
+      }}
+    >
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/8 rounded-full blur-3xl" />

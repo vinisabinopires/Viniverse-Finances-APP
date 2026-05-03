@@ -141,7 +141,7 @@ export default function More() {
           </div>
           <div>
             <h3 className="font-semibold">Viniverse – Finances</h3>
-            <p className="text-xs text-muted-foreground">Version 1.8.0 · Personal finance tracker</p>
+            <p className="text-xs text-muted-foreground">Version 1.9.0 · Personal finance tracker</p>
           </div>
         </div>
 

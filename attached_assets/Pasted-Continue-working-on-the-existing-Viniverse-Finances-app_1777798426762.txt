@@ -1,0 +1,132 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. This phase is focused only on PWA/install polish, app metadata, iPhone home-screen experience, and final mobile presentation.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, PIN lock, backup/import/export, and all current behavior.
+
+Goal of this phase:
+Make Viniverse – Finances feel like a polished installable mobile app, especially on iPhone.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, or external services.
+- Do not add biometric authentication in this phase.
+- Do not change the database schema.
+- Do not break existing data or backup/import/export.
+- Avoid new dependencies unless absolutely necessary.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+1. PWA manifest audit
+Review and improve the web app manifest.
+
+Set:
+- app name: Viniverse – Finances
+- short name: Viniverse
+- description: Personal finance tracker for income, expenses, goals, budgets, recurring transactions, and net worth.
+- display: standalone
+- orientation: portrait
+- theme color: dark indigo/black matching the app
+- background color: dark/black
+- start_url: /
+- scope: /
+
+Make sure manifest is linked correctly in index.html.
+
+2. iPhone home-screen polish
+Improve iOS support in index.html.
+
+Add or verify:
+- viewport with viewport-fit=cover
+- apple-mobile-web-app-capable
+- apple-mobile-web-app-title
+- apple-mobile-web-app-status-bar-style set to black-translucent or appropriate dark style
+- theme-color meta tags
+- proper app icon links if icon files exist
+
+Do not use broken icon paths.
+
+3. App icons
+Check existing public assets.
+
+If icons are missing, create simple placeholder app icons using SVG or existing CSS-friendly assets if possible:
+- 192x192
+- 512x512
+- apple-touch-icon size if practical
+
+The icon should be simple:
+- dark background
+- purple/indigo/cyan gradient feel
+- “V” or small orbit/planet concept
+- readable at small size
+
+Do not spend too much time on complex illustration.
+
+4. Service worker / offline check
+Review if a service worker exists.
+
+If no service worker exists:
+- Add a simple safe service worker for basic offline shell caching.
+- Register it carefully.
+- Do not aggressively cache dynamic IndexedDB data.
+- Avoid breaking development HMR.
+- Prefer a simple production-safe registration.
+
+If a service worker already exists:
+- Review it for obvious issues.
+- Make sure it does not cache stale app versions too aggressively.
+- Add a simple update message or safe reload behavior only if easy.
+
+5. Installed app experience
+Improve visual behavior when installed:
+- Prevent white flashes on load if possible.
+- Ensure body/html background is dark.
+- Ensure safe-area padding works on iPhone.
+- Ensure bottom nav respects home indicator.
+- Ensure LockScreen also respects safe-area.
+- Ensure drawers/modals feel comfortable on mobile standalone mode.
+
+6. Loading state polish
+Add or improve a small initial loading/splash feel:
+- dark background
+- Viniverse name
+- subtle loading indicator
+- avoid showing unstyled app while booting
+- should not delay app unnecessarily
+
+7. App version display
+Update Settings app version to v1.9.0 or appropriate next version.
+Keep it consistent with the phase.
+
+8. PIN lock compatibility
+Make sure PIN lock still works properly in standalone/PWA mode:
+- lock screen full-screen
+- no financial data visible while locked
+- timeout logic still works
+- safe-area padding is correct
+
+9. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix issues.
+
+Manually verify:
+- App loads normally in browser
+- Manifest is valid enough for install
+- iPhone/Safari home-screen metadata is present
+- Body background stays dark during load
+- Bottom nav does not overlap home indicator
+- Lock screen looks correct on mobile
+- App still works after refresh
+- Existing Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, PIN Lock, Export, Import, and Clear All Data still work
+- Backup export still excludes PIN settings
+- No TypeScript errors
+- No runtime errors
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files created
+- files updated
+- PWA improvements made
+- icon/manifest changes
+- service worker behavior
+- whether database schema changed
+- what I should test manually next
