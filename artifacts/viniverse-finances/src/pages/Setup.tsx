@@ -3,15 +3,17 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   ChevronLeft, Plus, X, CheckCircle2, Sparkles,
-  Shield, AlertTriangle, ArrowRight, Wallet, CreditCard, TrendingUp, Check,
+  Shield, AlertTriangle, ArrowRight, Wallet, CreditCard, TrendingUp, Check, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   useLiveAccounts, addRecurringRule, addBudget, addGoal, clearAllData, db,
+  generateDueTransactions,
 } from "@/hooks/use-finance";
 import type { Account, RecurringFrequency, GoalType } from "@/types";
+import type { GenerateResult } from "@/hooks/use-finance";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import { formatMoney, formatFrequency } from "@/utils";
 
@@ -194,6 +196,10 @@ export default function Setup() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedCounts,  setSavedCounts]  = useState({ accounts: 0, rules: 0, budgets: 0, goals: 0 });
 
+  // Post-setup generation
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [genResult,    setGenResult]    = useState<GenerateResult | null>(null);
+
   // Combined account options for income/expense dropdowns
   const allAccountOptions = [
     ...existingAccounts.map((a) => ({ ref: `e:${a.id}`, label: `${a.name} (${a.currencyCode})` })),
@@ -303,6 +309,30 @@ export default function Setup() {
     }
   };
 
+  // ── Post-setup: generate due recurring transactions ──────────────────────────
+  const handleGenerate = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    try {
+      const allRules = await db.recurringRules.toArray();
+      const activeRules = allRules.filter((r) => r.isActive);
+      if (activeRules.length === 0) {
+        setGenResult({ created: 0, skipped: 0 });
+        return;
+      }
+      const result = await generateDueTransactions(activeRules);
+      setGenResult(result);
+      toast({
+        title: result.created > 0 ? `Generated ${result.created} transaction${result.created !== 1 ? "s" : ""}` : "No new transactions",
+        description: result.skipped > 0 ? `${result.skipped} already existed and were skipped.` : undefined,
+      });
+    } catch {
+      toast({ title: "Generation failed", description: "Something went wrong. Try again.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // ── Navigation ──────────────────────────────────────────────────────────────
   const handleBack = () => {
     if (step === 0) { setLocation("/more"); return; }
@@ -317,25 +347,31 @@ export default function Setup() {
 
   // ── Done screen ─────────────────────────────────────────────────────────────
   if (done) {
+    const hasRules = savedCounts.rules > 0;
+
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center gap-5"
-        style={{ paddingTop: "env(safe-area-inset-top,0px)", paddingBottom: "env(safe-area-inset-bottom,0px)" }}>
+      <div
+        className="min-h-screen bg-background flex flex-col items-center px-4 py-8 gap-5 overflow-y-auto"
+        style={{ paddingTop: "max(2rem, env(safe-area-inset-top, 2rem))", paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))" }}
+      >
+        {/* Success icon */}
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 15 }}
-          className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+          className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center mt-4">
           <CheckCircle2 className="w-10 h-10 text-emerald-400" />
         </motion.div>
-        <div>
+
+        <div className="text-center">
           <h1 className="text-2xl font-bold">Setup Complete!</h1>
           <p className="text-muted-foreground text-sm mt-1">Your real financial profile is ready.</p>
         </div>
 
-        {/* Summary */}
+        {/* Summary counts */}
         <div className="glass-card rounded-2xl border border-white/10 p-4 w-full max-w-sm text-left space-y-2">
           {([
-            { label: "Accounts created",  count: savedCounts.accounts },
-            { label: "Recurring rules",   count: savedCounts.rules    },
-            { label: "Budgets",           count: savedCounts.budgets  },
-            { label: "Goals",             count: savedCounts.goals    },
+            { label: "Accounts created", count: savedCounts.accounts },
+            { label: "Recurring rules",  count: savedCounts.rules    },
+            { label: "Budgets",          count: savedCounts.budgets  },
+            { label: "Goals",            count: savedCounts.goals    },
           ] as { label: string; count: number }[]).map(({ label, count }) => (
             <div key={label} className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">{label}</span>
@@ -344,20 +380,87 @@ export default function Setup() {
           ))}
         </div>
 
+        {/* ── Activate recurring plan ──────────────────────────────────────── */}
+        {hasRules && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="w-full max-w-sm glass-card rounded-2xl border border-indigo-500/25 bg-indigo-500/5 p-4 space-y-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                <Zap className="w-4 h-4 text-indigo-400" />
+              </div>
+              <p className="text-sm font-semibold text-indigo-300">Activate your recurring plan</p>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              You created recurring income and expense rules. Generate due transactions now to reflect them in your Dashboard, Weekly Cashflow, Budgets, and Monthly Reports.
+            </p>
+
+            {/* Result feedback */}
+            {genResult !== null && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className={`rounded-xl px-3 py-2 text-xs font-medium space-y-0.5 ${
+                  genResult.created > 0
+                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                    : "bg-white/5 border border-white/10 text-muted-foreground"
+                }`}>
+                {genResult.created > 0 ? (
+                  <p>✓ Created {genResult.created} transaction{genResult.created !== 1 ? "s" : ""}</p>
+                ) : (
+                  <p>No due transactions found for today.</p>
+                )}
+                {genResult.skipped > 0 && (
+                  <p className="text-muted-foreground">↩ Skipped {genResult.skipped} already existing</p>
+                )}
+              </motion.div>
+            )}
+
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="w-full bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/25 h-11 rounded-xl font-semibold disabled:opacity-50"
+              variant="outline"
+            >
+              {isGenerating ? (
+                <>
+                  <Zap className="w-4 h-4 mr-2 animate-pulse" /> Generating…
+                </>
+              ) : genResult !== null ? (
+                <>
+                  <Zap className="w-4 h-4 mr-2" /> Run Again
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 mr-2" /> Generate Due Transactions
+                </>
+              )}
+            </Button>
+          </motion.div>
+        )}
+
         {/* Backup reminder */}
         <div className="w-full max-w-sm glass-card rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3 text-left">
           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-amber-400">Export a backup</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Protect your real data by creating a backup from Settings.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">After adding real financial data, export a backup so your local data can be restored later.</p>
           </div>
         </div>
 
-        <div className="w-full max-w-sm space-y-2 mt-2">
-          <Button onClick={() => setLocation("/")} className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold h-12 rounded-2xl text-base">
+        {/* Actions */}
+        <div className="w-full max-w-sm space-y-2">
+          <Button onClick={() => setLocation("/")}
+            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold h-12 rounded-2xl text-base">
             Go to Dashboard
           </Button>
-          <Button variant="outline" onClick={() => setLocation("/more")} className="w-full bg-white/5 border-white/10 hover:bg-white/10 h-11 rounded-2xl">
+          {genResult !== null && genResult.created > 0 && (
+            <Button variant="outline" onClick={() => setLocation("/transactions")}
+              className="w-full bg-white/5 border-white/10 hover:bg-white/10 h-11 rounded-2xl">
+              View Transactions
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => setLocation("/more")}
+            className="w-full bg-white/5 border-white/10 hover:bg-white/10 h-11 rounded-2xl">
             Export Backup in Settings
           </Button>
         </div>

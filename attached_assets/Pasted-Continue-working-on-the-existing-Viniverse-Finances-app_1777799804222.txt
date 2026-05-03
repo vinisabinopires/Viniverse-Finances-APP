@@ -1,0 +1,104 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.0.1 — Setup Completion Polish.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, PIN lock, PWA setup, Real Life Setup Wizard, backup/import/export, and all current behavior.
+
+Goal:
+Improve the Real Life Setup completion flow by allowing the user to generate due recurring transactions immediately after finishing setup, so recurring income and fixed expenses can appear in the current Dashboard without manual navigation.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, biometric auth, or external services.
+- Do not change the database schema.
+- Do not break existing data.
+- Do not break backup/import/export.
+- Do not auto-generate transactions silently.
+- User must explicitly tap a button to generate due recurring transactions.
+- Prevent duplicates using the existing recurringOccurrenceKey logic.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+1. Setup Done screen improvement
+On the Real Life Setup final success screen, add a polished section called:
+
+“Activate your recurring plan”
+
+Text:
+“You created recurring income and expense rules. Generate due transactions now to reflect them in your Dashboard, Weekly Cashflow, Budgets, and Monthly Reports.”
+
+Add a button:
+“Generate Due Transactions”
+
+Behavior:
+- Use the existing recurring transaction generation helper if available.
+- Generate due transactions only up to today.
+- Do not generate future transactions.
+- Do not duplicate transactions.
+- Show result summary:
+  - Created X transactions
+  - Skipped Y existing transactions
+  - No due transactions found, if applicable
+
+2. Post-generation actions
+After generation succeeds, show two useful buttons:
+- “Go to Dashboard”
+- “View Transactions”
+
+The Dashboard should immediately reflect generated recurring transactions.
+
+3. Backup reminder
+Keep the existing backup reminder after setup.
+
+Improve wording slightly:
+“After adding real financial data, export a backup so your local data can be restored later.”
+
+Keep the “Export Backup” button.
+
+4. Safety
+- If no recurring rules were created, hide or soften the generate section.
+- If there are recurring rules but no account references are valid, show a graceful message instead of crashing.
+- Do not generate if there are no active recurring rules.
+- Disable the generate button while running.
+- Prevent double-submit.
+- Show success/error feedback clearly.
+
+5. Dashboard setup prompt refinement
+Review the Dashboard setup prompt visibility.
+
+Current behavior:
+- It appears only when accounts.length === 0 && recurringRules.length === 0.
+
+Keep this behavior, but make sure:
+- It disappears after setup creates accounts or recurring rules.
+- It does not show for users who already have real data.
+- It links correctly to /setup.
+
+6. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- Finish Real Life Setup with at least one recurring income rule and one recurring expense rule.
+- Done screen shows “Generate Due Transactions”.
+- Tap it once: generated transactions appear.
+- Tap it again: duplicates are skipped.
+- Dashboard updates.
+- Transactions page shows generated entries with Recurring badge.
+- Weekly Cashflow reflects generated entries.
+- Monthly Reports reflects generated entries.
+- Budgets update if generated expenses match budget categories.
+- If setup has no recurring rules, done screen does not show a confusing generate button.
+- Export Backup still works.
+- PIN settings are still untouched.
+- Existing pages still work:
+  Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, PIN Lock, Export, Import, Clear All Data.
+
+Deliverable:
+At the end, summarize:
+- files updated
+- whether any files were created
+- whether database schema changed
+- generation behavior added
+- safety protections
+- what I should test manually next
