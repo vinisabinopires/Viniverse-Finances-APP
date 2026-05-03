@@ -1,0 +1,171 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.1 — Daily Dashboard & Quick Actions.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, PIN lock, PWA setup, Real Life Setup Wizard, backup/import/export, and all current behavior.
+
+Goal:
+Improve the Dashboard for real daily use by making the most important financial information easier to scan and adding quick actions for common tasks.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, biometric auth, or external services.
+- Do not change the database schema unless absolutely necessary.
+- Prefer localStorage for UI preferences if needed.
+- Do not break existing data.
+- Do not break backup/import/export.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+1. Dashboard hierarchy improvement
+Reorganize the Dashboard so it feels like a daily cockpit.
+
+Top priority sections should be:
+
+A) Today / This Week card
+Show:
+- current week income
+- current week expenses
+- current week net
+- safe-to-spend estimate if a weekly plan exists
+- CTA: “View Weekly Cashflow”
+
+B) Monthly Snapshot card
+Show:
+- current month income
+- current month expenses
+- net
+- savings rate if income > 0
+- CTA: “View Report”
+
+C) Balances card
+Show:
+- USD total
+- BRL total
+- account count
+- CTA: “View Accounts”
+
+Then show secondary sections:
+- Budget Watch
+- Upcoming Recurring
+- Goals Progress
+- Net Worth
+- Top Expenses
+- Recent Transactions
+
+Do not remove existing sections. Improve order, spacing, and scanning.
+
+2. Add Quick Actions section
+Add a compact Quick Actions card near the top of Dashboard.
+
+Buttons:
+- Add Expense
+- Add Income
+- Generate Due
+- Snapshot
+- Backup
+
+Behavior:
+- Add Expense opens existing transaction drawer/form with type preselected to EXPENSE.
+- Add Income opens existing transaction drawer/form with type preselected to INCOME.
+- Generate Due runs existing recurring generation up to today, using duplicate prevention. Show created/skipped toast.
+- Snapshot navigates to /net-worth or opens existing snapshot area if easy. Prefer safe navigation if opening directly is risky.
+- Backup navigates to More/Settings where export exists. Do not auto-export.
+
+3. Add transaction drawer integration on Dashboard
+If the Dashboard does not already have a clean Add Transaction flow:
+- Reuse the existing TransactionDrawer and TransactionForm.
+- Make sure the drawer uses the fixed mobile scroll pattern.
+- Save/Cancel buttons must be visible.
+- Adding a transaction from Dashboard should update:
+  - Dashboard totals
+  - Accounts balances
+  - Budgets
+  - Weekly Cashflow
+  - Monthly Reports
+
+4. Dashboard compact mode with localStorage
+Add a simple Dashboard preference stored in localStorage:
+- compact mode: true/false
+
+In Dashboard:
+- Add a small toggle or button: “Compact” / “Comfort”
+- Compact mode reduces vertical spacing and makes secondary sections smaller.
+- Comfort mode keeps current spacious layout.
+- Store preference in localStorage.
+- Do not include this in backup export.
+
+5. Collapsible secondary sections
+Make secondary Dashboard sections collapsible:
+- Budget Watch
+- Upcoming Recurring
+- Goals Progress
+- Net Worth
+- Top Expenses
+- Recent Transactions
+
+Use localStorage to remember collapsed/expanded state if simple.
+Default:
+- Budget Watch expanded
+- Upcoming Recurring expanded
+- Recent Transactions expanded
+- Goals, Net Worth, Top Expenses can be compact/collapsible depending on available space.
+
+Do not hide critical information completely. Use clear headers and counts.
+
+6. Data safety and empty states
+Improve empty states:
+- If no weekly plan exists, show “Set up weekly plan” CTA.
+- If no budget exists, show “Create budget” CTA.
+- If no recurring rules exist, show “Set up recurring income and bills” CTA.
+- If no net worth snapshot exists, show “Create snapshot” CTA.
+- If no transactions exist, show “Add your first transaction” CTA.
+
+7. Keep calculations safe
+Make sure:
+- USD and BRL are never mixed incorrectly.
+- savings rate does not divide by zero.
+- missing accounts or deleted accounts do not crash recent transactions.
+- recurring generation handles no active rules gracefully.
+- quick actions do not duplicate recurring transactions.
+
+8. UI polish
+Keep the dark iOS-like glassmorphism style.
+Make Quick Actions touch-friendly.
+Use clean icons if already available in lucide-react.
+Avoid making Dashboard visually noisy.
+The final Dashboard should feel premium, practical, and easy to scan on iPhone.
+
+9. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix errors.
+
+Manually verify:
+- Dashboard loads with real data.
+- Quick Add Expense opens the transaction drawer with Expense selected.
+- Quick Add Income opens the transaction drawer with Income selected.
+- Save button is visible and works on mobile.
+- Cancel closes the drawer.
+- Added transaction updates Dashboard, Accounts, Budgets, Weekly Cashflow, and Reports.
+- Generate Due creates due recurring transactions and skips duplicates on second run.
+- Snapshot button safely navigates to Net Worth.
+- Backup button safely navigates to More/Settings.
+- Compact/Comfort toggle works and persists after refresh.
+- Collapsible sections expand/collapse and persist if implemented.
+- Empty states show useful CTAs.
+- PIN Lock still works.
+- PWA still works.
+- Export/import still works.
+- Existing pages still work:
+  Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, Setup, More.
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files updated
+- files created, if any
+- whether database schema changed
+- dashboard hierarchy improvements
+- quick actions added
+- localStorage preferences added
+- what I should test manually next
