@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw,
   BarChart2, Zap, FileBarChart2, Sparkles, ChevronDown, ChevronUp,
-  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers, ArrowLeftRight,
+  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers, ArrowLeftRight, Receipt,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import { useToast } from "@/hooks/use-toast";
@@ -229,6 +229,21 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recurringRules, transactions]);
 
+  // ─── Fixed Commitments (USD) ─────────────────────────────────────────────
+  const fixedUsdRules = recurringRules.filter((r) => r.isActive && r.type === "EXPENSE" && r.currencyCode === "USD");
+  const fixedUsdMonthlyCents = fixedUsdRules.reduce((s, r) => {
+    switch (r.frequency) {
+      case "WEEKLY":   return s + Math.round(r.amountCents * 52 / 12);
+      case "BIWEEKLY": return s + Math.round(r.amountCents * 26 / 12);
+      case "MONTHLY":  return s + r.amountCents;
+      case "YEARLY":   return s + Math.round(r.amountCents / 12);
+    }
+  }, 0);
+  const fixedNextDue = fixedUsdRules
+    .map((r) => ({ rule: r, next: getNextOccurrenceAfter(r, today) }))
+    .filter((x): x is { rule: RecurringRule; next: Date } => x.next !== null)
+    .sort((a, b) => a.next.getTime() - b.next.getTime())[0] ?? null;
+
   // ─── Budgets ─────────────────────────────────────────────────────────────
   const monthBudgets = budgets
     .filter((b) => b.month === currentMonth)
@@ -429,6 +444,41 @@ export default function Dashboard() {
                   </div>
                 );
               })}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Fixed Commitments ────────────────────────────────────────── */}
+        {fixedUsdRules.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.018 }}
+            className="glass-card rounded-2xl p-3 border border-amber-500/10"
+            data-testid="card-fixed-commitments"
+          >
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="flex items-center gap-1.5">
+                <Receipt className="w-3.5 h-3.5 text-amber-400" />
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Fixed Commitments</p>
+              </div>
+              <Link href="/subscriptions" className="text-xs text-primary hover:text-primary/80">View all</Link>
+            </div>
+            <div className="flex items-center justify-between px-1 py-0.5">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-amber-400 tabular-nums">
+                  {formatMoney(fixedUsdMonthlyCents, "USD")}
+                  <span className="text-[10px] text-muted-foreground font-normal ml-1">/mo est.</span>
+                </p>
+                {fixedNextDue && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    Next: <span className="font-medium">{fixedNextDue.rule.name}</span>
+                  </p>
+                )}
+              </div>
+              <Link href="/subscriptions">
+                <button className="text-[10px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors px-2.5 py-1.5 rounded-lg flex-shrink-0 ml-3">
+                  Subscriptions
+                </button>
+              </Link>
             </div>
           </motion.div>
         )}

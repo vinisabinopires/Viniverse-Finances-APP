@@ -1,0 +1,214 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.5 - Subscription Center & Fixed Commitments.
+
+Important direction:
+Do NOT add CSV export, PDF export, cloud sync, biometric auth, bank integrations, external APIs, AI APIs, or bottom navigation changes in this phase.
+Do NOT add monthly transfer trend charts in this phase.
+Do NOT change the database schema unless absolutely necessary.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, cashflow calendar, quick templates, transfers, transfer insights, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Create a Subscription Center / Fixed Commitments page that helps the user understand recurring expenses and fixed monthly obligations without mixing them with variable spending.
+
+Important financial rule:
+This page should use existing recurringRules.
+It should focus mainly on active recurring EXPENSE rules.
+Do not count transfers.
+Do not change income/expense calculations.
+Do not change budgets.
+Do not change reports.
+
+1. Create Subscription Center page
+Create a new route:
+- /subscriptions
+
+Page name:
+- Subscription Center
+
+Add a feature card in More/Settings:
+- "Subscription Center"
+- Subtitle: "Track fixed bills, subscriptions, and monthly commitments."
+
+Do not add it to the bottom navigation.
+
+2. Page sections
+The page should have:
+
+A) Monthly Commitment Summary
+Show, by selected currency:
+- total active recurring expenses converted to monthly estimate
+- number of active recurring expense rules
+- average commitment per week
+- largest recurring expense
+- next due recurring expense
+- inactive recurring expense count
+
+Important:
+Keep USD and BRL separate.
+Use a currency toggle USD / BRL.
+Do not mix currencies.
+
+B) Fixed Bills List
+Show active recurring expense rules grouped by category or type:
+- Housing
+- Utilities
+- Subscriptions
+- Transportation
+- Insurance
+- Food
+- Other
+
+Each card should show:
+- name
+- amount
+- frequency
+- monthly equivalent estimate
+- next due date
+- account
+- category
+- active status
+
+C) Subscriptions Review
+Identify recurring expenses that look like subscriptions based on category/name keywords:
+- Apple
+- iCloud
+- Netflix
+- Spotify
+- YouTube
+- Music
+- subscription
+- streaming
+- software
+- app
+- phone
+- internet
+
+Show a compact review list:
+- subscription name
+- monthly equivalent
+- next due
+- CTA: "Review"
+
+This is not an AI feature. Use simple deterministic matching only.
+
+D) Upcoming Fixed Bills
+Show the next 30 days of active recurring expense occurrences:
+- date
+- name
+- amount
+- account
+- status Generated / Pending / Upcoming
+
+Use existing recurrence helpers if available.
+
+E) Inactive Rules
+Show inactive recurring expense rules in a collapsed or muted section.
+
+3. Monthly equivalent calculation
+Calculate estimated monthly equivalent based on frequency:
+
+- WEEKLY: amount * 52 / 12
+- BIWEEKLY: amount * 26 / 12
+- MONTHLY: amount
+- YEARLY: amount / 12
+
+Use cents carefully.
+Avoid NaN.
+Show estimates clearly as estimates.
+
+4. Add/edit behavior
+The Subscription Center should let the user manage recurring expense rules.
+
+Preferred:
+- "Add Fixed Bill" button opens existing RecurringForm with type preselected to EXPENSE if possible.
+- Tapping an existing item opens existing RecurringDetailDrawer if available.
+- If direct drawer integration is risky, navigate to /recurring.
+
+Do not duplicate recurring logic.
+Do not create a separate subscription table.
+
+5. Dashboard integration
+Add a compact card on Dashboard if clean and low risk:
+
+"Fixed Commitments"
+
+Show:
+- monthly fixed expenses in selected/default currency
+- next fixed bill
+- CTA: "View Subscriptions"
+
+Keep it compact.
+Do not make Dashboard noisy.
+Do not remove existing Dashboard sections.
+
+6. Reports integration
+Optional and only if low risk:
+On Monthly Reports, add a small line or card:
+- "Fixed commitments estimate"
+- selected currency monthly equivalent
+- link to /subscriptions
+
+Do not change income, expense, budget, savings rate, or transfer insights calculations.
+
+7. Empty states
+If no recurring expense rules exist:
+Show:
+"No fixed bills or subscriptions yet."
+"Create recurring expense rules for rent, internet, phone, subscriptions, and insurance."
+Button:
+"Add Fixed Bill"
+
+8. UI polish
+Keep dark iOS-like glassmorphism.
+Use a clean fixed-cost visual language:
+- amber for upcoming
+- indigo/blue for fixed commitments
+- muted style for inactive
+Avoid making subscriptions look like normal daily spending.
+
+9. Data safety
+Handle safely:
+- no recurring rules
+- no active expense rules
+- inactive rules
+- deleted/missing account references
+- missing currencyCode
+- invalid dates
+- different frequencies
+- yearly and biweekly estimates
+- old backups
+- no accounts
+
+10. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- More → Subscription Center opens /subscriptions
+- USD/BRL toggle filters correctly
+- Monthly commitment estimate is correct for weekly, biweekly, monthly, and yearly rules
+- Active recurring expenses appear in Fixed Bills List
+- Recurring income rules do not appear in fixed expense totals
+- Transfers do not appear anywhere on this page
+- Subscription Review identifies Apple/iCloud/phone/internet style rules
+- Upcoming Fixed Bills shows next 30 days
+- Inactive expense rules appear muted/collapsed
+- Add Fixed Bill works or safely navigates to /recurring
+- Existing Recurring page still works
+- Dashboard still works
+- Reports still work
+- Transfer Insights still work
+- Budgets, Weekly Cashflow, Calendar, Quick Templates, Transfers, Setup, More, PIN Lock, PWA, Backup/Import/Export all still work
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files created
+- files updated
+- whether database schema changed
+- Subscription Center behavior
+- monthly commitment calculation
+- Dashboard integration, if added
+- what I should test manually next
