@@ -1,6 +1,6 @@
 import { Transaction } from "@/types";
 import { formatMoney, formatDate } from "@/utils";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface TransactionCardProps {
@@ -10,6 +10,7 @@ interface TransactionCardProps {
 
 export function TransactionCard({ transaction, onClick }: TransactionCardProps) {
   const isIncome = transaction.type === "INCOME";
+  const isRecurring = !!transaction.recurringRuleId;
 
   return (
     <motion.div
@@ -25,10 +26,18 @@ export function TransactionCard({ transaction, onClick }: TransactionCardProps) 
         <h4 className="font-semibold text-foreground truncate">
           {transaction.description || transaction.category}
         </h4>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
           <span className="truncate">{transaction.category}</span>
           <span>·</span>
           <span className="whitespace-nowrap">{formatDate(transaction.occurredAt)}</span>
+          {isRecurring && (
+            <>
+              <span>·</span>
+              <span className="flex items-center gap-0.5 text-indigo-400/80 whitespace-nowrap">
+                <RefreshCw className="w-2.5 h-2.5" /> Recurring
+              </span>
+            </>
+          )}
         </div>
       </div>
       <div className="text-right whitespace-nowrap">

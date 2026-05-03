@@ -10,6 +10,7 @@ import Transactions from "@/pages/Transactions";
 import Budgets from "@/pages/Budgets";
 import Accounts from "@/pages/Accounts";
 import More from "@/pages/More";
+import Recurring from "@/pages/Recurring";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/budgets" component={Budgets} />
       <Route path="/accounts" component={Accounts} />
       <Route path="/more" component={More} />
+      <Route path="/recurring" component={Recurring} />
       <Route component={NotFound} />
     </Switch>
   );

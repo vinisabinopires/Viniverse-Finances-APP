@@ -1,0 +1,185 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch. Inspect the current codebase first and preserve the current React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, onboarding flow, transaction/account detail drawers, budgets system, backup/import/export, and current app behavior.
+
+Goal of this phase:
+Add recurring transaction support so the user can create recurring income and expense rules, then generate transactions from those rules without duplicates.
+
+Important constraints:
+- Keep everything local-first using IndexedDB/Dexie.
+- Do not add backend, authentication, Firebase, Supabase, or paid APIs.
+- Avoid heavy libraries.
+- Do not break existing accounts, transactions, budgets, backup/import/export, or onboarding.
+- Do not rebuild the app.
+- Do not add another bottom navigation item. Keep recurring transactions accessible from More/Settings.
+
+Core concept:
+Create recurring rules separately from actual transactions.
+A recurring rule is a template. Generated transactions are normal transactions linked back to the recurring rule.
+
+1. Database changes
+Upgrade Dexie safely to the next schema version and add a recurringRules table.
+
+RecurringRule fields:
+- id
+- name
+- type: INCOME or EXPENSE
+- amountCents
+- currencyCode: USD or BRL
+- accountId
+- category
+- description
+- notes optional
+- frequency: WEEKLY, BIWEEKLY, MONTHLY, YEARLY
+- startDate
+- endDate optional
+- dayOfMonth optional for monthly/yearly rules
+- dayOfWeek optional for weekly/biweekly rules
+- isActive boolean
+- createdAt
+- updatedAt
+
+Also add optional fields to Transaction if needed:
+- recurringRuleId optional
+- recurringOccurrenceKey optional
+
+Important:
+- Existing transactions must continue working.
+- Existing backups without recurringRules must still import correctly.
+- Clear All Data must clear recurringRules too.
+
+2. Duplicate prevention
+Generated recurring transactions must never duplicate.
+Use a stable recurringOccurrenceKey, for example:
+recurringRuleId + ":" + occurrenceDate
+
+Before generating a transaction, check whether a transaction with the same recurringOccurrenceKey already exists.
+If it exists, do not create another one.
+
+3. Recurring page
+Create a new page/section called Recurring Transactions.
+
+Do not add it to bottom nav.
+Instead:
+- Add a card/button in More/Settings: “Recurring Transactions”
+- Clicking it navigates to /recurring or opens a full page/drawer
+
+Recurring page should show:
+- Active recurring rules
+- Inactive recurring rules
+- Rule cards showing:
+  - name
+  - amount
+  - type
+  - category
+  - account
+  - frequency
+  - next due date if possible
+  - active/inactive status
+- Add Recurring Rule button
+- Edit rule
+- Delete rule with confirmation
+- Toggle active/inactive
+
+4. Recurring form
+Create a form for add/edit recurring rules.
+
+Fields:
+- name
+- type: Income / Expense
+- amount
+- currency: USD / BRL
+- account
+- category using the existing CategoryPicker if possible
+- description
+- frequency: Weekly, Biweekly, Monthly, Yearly
+- start date
+- end date optional
+- notes optional
+- active toggle
+
+Helpful defaults:
+- For Income: category Salary
+- For Expense: category Subscriptions or Other Expense
+- Default currency based on selected account if possible
+
+5. Generate transactions flow
+Add a clear action on the Recurring page:
+“Generate due transactions”
+
+When clicked:
+- Generate all active recurring transactions due up to today.
+- Also allow generating for the selected/current month if easier and safer.
+- Show a confirmation/result summary:
+  - created X transactions
+  - skipped Y already existing transactions
+  - no due transactions found
+
+Do not auto-generate endlessly on every render.
+Do not silently create transactions without user action in this phase.
+Manual generation is safer for MVP.
+
+6. Dashboard integration
+Add a small “Recurring Watch” section on the Dashboard.
+
+It should show:
+- Upcoming recurring transactions due soon, preferably next 7 or 14 days
+- Name, amount, date, type
+- If none, show a subtle empty state:
+  “No upcoming recurring transactions.”
+
+Keep this section compact so the Dashboard does not become cluttered.
+
+7. Transactions integration
+Generated transactions should behave like normal transactions:
+- appear in Dashboard and Transactions
+- affect account balances
+- affect budgets if they are expenses
+- can be opened in detail drawer
+- can be edited or deleted
+- show a subtle label/badge like “Recurring” if recurringRuleId exists
+
+If a generated transaction is edited, do not edit the recurring rule automatically.
+If a recurring rule is edited, do not retroactively change already generated transactions.
+
+8. Backup/import/export
+Update backup export/import to include recurringRules.
+Use backup version 3 if needed.
+Import validation must handle:
+- old backups without budgets or recurringRules
+- backups with transactions/accounts/budgets/recurringRules
+- invalid JSON safely without breaking the app
+
+9. UI polish
+- Keep dark iOS-like glassmorphism.
+- Make recurring cards premium and touch-friendly.
+- Use clean status pills for active/inactive.
+- Make forms comfortable on mobile.
+- Keep bottom nav safe and unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+10. Testing
+Run TypeScript checks and fix all errors.
+Check console logs and fix runtime errors.
+
+Manually verify:
+- Create a monthly expense rule like Rent.
+- Create a weekly income rule like Salary.
+- Create a monthly subscription rule like Netflix.
+- Generate due transactions.
+- Generate again and confirm duplicates are skipped.
+- Generated transactions appear in Transactions and Dashboard.
+- Account balances update correctly.
+- Budgets update when generated expenses match budget categories.
+- Editing a generated transaction does not alter the recurring rule.
+- Toggling a recurring rule inactive prevents future generation.
+- Export includes recurringRules.
+- Import restores recurringRules.
+- Clear All Data removes recurringRules too.
+- Existing app pages still work.
+
+Deliverable:
+At the end, summarize:
+- files created
+- files updated
+- database schema changes
+- recurring transaction behavior
+- what I should test manually next
