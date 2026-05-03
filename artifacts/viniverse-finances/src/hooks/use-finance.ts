@@ -3,7 +3,7 @@ import { liveQuery } from 'dexie';
 import { db } from '../db/db';
 import type {
   Account, Transaction, Budget, RecurringRule, RecurringFrequency,
-  FinancialGoal, NetWorthSnapshot, NetWorthAccountBreakdown, WeeklyPlan, QuickTemplate,
+  FinancialGoal, NetWorthSnapshot, NetWorthAccountBreakdown, WeeklyPlan, QuickTemplate, Transfer,
 } from '../types';
 
 export { db };
@@ -44,13 +44,16 @@ export function useLiveWeeklyPlans(): WeeklyPlan[] {
 export function useLiveQuickTemplates(): QuickTemplate[] {
   return useDexieLiveQuery(() => db.quickTemplates.orderBy('sortOrder').toArray(), []);
 }
+export function useLiveTransfers(): Transfer[] {
+  return useDexieLiveQuery(() => db.transfers.orderBy('date').reverse().toArray(), []);
+}
 
 // ─── Week helpers ─────────────────────────────────────────────────────────────
 
 export function getWeekStartDate(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  const day = d.getDay(); // 0=Sun
+  const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   return d;
@@ -239,20 +242,33 @@ export async function deleteGoal(id: string) {
 
 // ─── Net Worth ────────────────────────────────────────────────────────────────
 
-export function calcAccountBalance(account: Account, transactions: Transaction[]): number {
+export function calcAccountBalance(account: Account, transactions: Transaction[], transfers: Transfer[] = []): number {
   const accTx   = transactions.filter((t) => t.accountId === account.id);
   const income  = accTx.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amountCents, 0);
   const expense = accTx.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amountCents, 0);
-  return account.initialBalanceCents + income - expense;
+
+  // Transfers: outgoing subtracts fromAmount + applicable fee; incoming adds toAmount
+  const outgoing = transfers
+    .filter((tr) => tr.fromAccountId === account.id)
+    .reduce((s, tr) => {
+      let cost = tr.fromAmountCents;
+      if (tr.feeAmountCents && tr.feeCurrencyCode === account.currencyCode) cost += tr.feeAmountCents;
+      return s + cost;
+    }, 0);
+  const incoming = transfers
+    .filter((tr) => tr.toAccountId === account.id)
+    .reduce((s, tr) => s + tr.toAmountCents, 0);
+
+  return account.initialBalanceCents + income - expense + incoming - outgoing;
 }
 
 export interface NetWorthTotals { totalUsdCents: number; totalBrlCents: number; breakdown: NetWorthAccountBreakdown[]; }
 
-export function calcNetWorth(accounts: Account[], transactions: Transaction[]): NetWorthTotals {
+export function calcNetWorth(accounts: Account[], transactions: Transaction[], transfers: Transfer[] = []): NetWorthTotals {
   let totalUsdCents = 0; let totalBrlCents = 0;
   const breakdown: NetWorthAccountBreakdown[] = [];
   for (const account of accounts) {
-    const balanceCents = calcAccountBalance(account, transactions);
+    const balanceCents = calcAccountBalance(account, transactions, transfers);
     if (account.currencyCode === 'USD') totalUsdCents += balanceCents;
     else totalBrlCents += balanceCents;
     breakdown.push({ accountId: account.id, accountName: account.name, accountType: account.type, currencyCode: account.currencyCode, balanceCents });
@@ -297,6 +313,19 @@ export async function deleteQuickTemplate(id: string) {
   await db.quickTemplates.delete(id);
 }
 
+// ─── Transfers ────────────────────────────────────────────────────────────────
+
+export async function addTransfer(data: Omit<Transfer, 'id' | 'createdAt' | 'updatedAt'>) {
+  const now = new Date().toISOString();
+  await db.transfers.add({ id: crypto.randomUUID(), ...data, createdAt: now, updatedAt: now });
+}
+export async function updateTransfer(id: string, data: Partial<Transfer>) {
+  await db.transfers.update(id, { ...data, updatedAt: new Date().toISOString() });
+}
+export async function deleteTransfer(id: string) {
+  await db.transfers.delete(id);
+}
+
 // ─── Clear All ────────────────────────────────────────────────────────────────
 
 export async function clearAllData() {
@@ -308,5 +337,6 @@ export async function clearAllData() {
   await db.netWorthSnapshots.clear();
   await db.weeklyPlans.clear();
   await db.quickTemplates.clear();
+  await db.transfers.clear();
   localStorage.removeItem('viniverse-seeded');
 }

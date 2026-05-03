@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import {
-  useLiveAccounts, useLiveTransactions, useLiveSnapshots,
+  useLiveAccounts, useLiveTransactions, useLiveSnapshots, useLiveTransfers,
   calcNetWorth, addSnapshot, updateSnapshot, deleteSnapshot,
 } from "@/hooks/use-finance";
 import { formatMoney, formatDate } from "@/utils";
@@ -169,9 +169,10 @@ function SnapshotRow({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function NetWorth() {
-  const accounts    = useLiveAccounts();
+  const accounts     = useLiveAccounts();
   const transactions = useLiveTransactions();
-  const snapshots   = useLiveSnapshots();
+  const transfers    = useLiveTransfers();
+  const snapshots    = useLiveSnapshots();
   const { toast }  = useToast();
 
   const [exchangeRateStr, setExchangeRateStr] = useState("");
@@ -179,7 +180,7 @@ export default function NetWorth() {
   const [snapshotNotes, setSnapshotNotes] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const { totalUsdCents, totalBrlCents, breakdown } = calcNetWorth(accounts, transactions);
+  const { totalUsdCents, totalBrlCents, breakdown } = calcNetWorth(accounts, transactions, transfers);
 
   const rate    = parseFloat(exchangeRateStr);
   const hasRate = !isNaN(rate) && rate > 0;

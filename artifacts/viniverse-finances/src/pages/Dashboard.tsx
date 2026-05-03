@@ -4,12 +4,13 @@ import { Layout } from "@/components/Layout";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionDrawer } from "@/components/TransactionDrawer";
+import { TransferForm } from "@/components/TransferForm";
 import { TransactionDetailDrawer } from "@/components/TransactionDetailDrawer";
 import { MonthSelector } from "@/components/MonthSelector";
 import { TransactionCard } from "@/components/TransactionCard";
 import {
   useLiveAccounts, useLiveTransactions, useLiveBudgets, useLiveRecurringRules,
-  useLiveGoals, useLiveSnapshots, useLiveWeeklyPlans, useLiveQuickTemplates,
+  useLiveGoals, useLiveSnapshots, useLiveWeeklyPlans, useLiveQuickTemplates, useLiveTransfers,
   calcBudgetSpent, calcNetWorth, getNextOccurrenceAfter,
   getWeekStartDate, getWeekEndDate, toDateStr, generateDueTransactions,
   getOccurrenceDatesForRange,
@@ -19,7 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDownRight, ArrowUpRight, TrendingUp, Target, ChevronRight, RefreshCw,
   BarChart2, Zap, FileBarChart2, Sparkles, ChevronDown, ChevronUp,
-  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers,
+  Minus, Plus, Camera, Download, Rows3, CalendarDays, Layers, ArrowLeftRight,
 } from "lucide-react";
 import { GOAL_TYPE_META } from "@/constants/goals";
 import { useToast } from "@/hooks/use-toast";
@@ -117,7 +118,8 @@ export default function Dashboard() {
   const [qaOpen, setQaOpen]             = useState(false);
   const [qaType, setQaType]             = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [qaTemplate, setQaTemplate]     = useState<QuickTemplate | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating]         = useState(false);
+  const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);
 
   // Compact mode (localStorage)
   const [compact, setCompact] = useState<boolean>(readCompact);
@@ -152,6 +154,7 @@ export default function Dashboard() {
   const snapshots       = useLiveSnapshots();
   const weeklyPlans     = useLiveWeeklyPlans();
   const quickTemplates  = useLiveQuickTemplates();
+  const transfers       = useLiveTransfers();
 
   // ─── Month calculations ──────────────────────────────────────────────────
   const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
@@ -166,7 +169,7 @@ export default function Dashboard() {
   const savingsRateUsd  = monthIncomeUsd > 0 ? Math.round((monthNetUsd / monthIncomeUsd) * 100) : null;
 
   // ─── Net worth ──────────────────────────────────────────────────────────
-  const { totalUsdCents, totalBrlCents } = calcNetWorth(accounts, transactions);
+  const { totalUsdCents, totalBrlCents } = calcNetWorth(accounts, transactions, transfers);
   const latestSnapshot = snapshots[0] ?? null;
 
   // ─── This week (USD) ────────────────────────────────────────────────────
@@ -317,13 +320,14 @@ export default function Dashboard() {
         {/* ── Quick Actions ────────────────────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-3" data-testid="card-quick-actions">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2.5 px-1">Quick Actions</p>
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-3 gap-1">
             {[
-              { label: "Expense",  icon: Minus,      color: "text-rose-400",    bg: "bg-rose-500/10",    action: () => openQa("EXPENSE") },
-              { label: "Income",   icon: Plus,       color: "text-emerald-400", bg: "bg-emerald-500/10", action: () => openQa("INCOME") },
-              { label: "Generate", icon: RefreshCw,  color: "text-indigo-400",  bg: "bg-indigo-500/10",  action: handleGenerateDue },
-              { label: "Snapshot", icon: Camera,     color: "text-cyan-400",    bg: "bg-cyan-500/10",    action: () => navigate('/net-worth') },
-              { label: "Backup",   icon: Download,   color: "text-amber-400",   bg: "bg-amber-500/10",   action: () => navigate('/more') },
+              { label: "Expense",  icon: Minus,          color: "text-rose-400",    bg: "bg-rose-500/10",    action: () => openQa("EXPENSE") },
+              { label: "Income",   icon: Plus,           color: "text-emerald-400", bg: "bg-emerald-500/10", action: () => openQa("INCOME") },
+              { label: "Transfer", icon: ArrowLeftRight, color: "text-indigo-400",  bg: "bg-indigo-500/10",  action: () => setTransferDrawerOpen(true) },
+              { label: "Generate", icon: RefreshCw,      color: "text-sky-400",     bg: "bg-sky-500/10",     action: handleGenerateDue },
+              { label: "Snapshot", icon: Camera,         color: "text-cyan-400",    bg: "bg-cyan-500/10",    action: () => navigate('/net-worth') },
+              { label: "Backup",   icon: Download,       color: "text-amber-400",   bg: "bg-amber-500/10",   action: () => navigate('/more') },
             ].map(({ label, icon: Icon, color, bg, action }) => (
               <button
                 key={label}
@@ -385,6 +389,49 @@ export default function Dashboard() {
             </div>
           )}
         </motion.div>
+
+        {/* ── Recent Transfers ─────────────────────────────────────────── */}
+        {transfers.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.015 }} className="glass-card rounded-2xl p-3" data-testid="card-recent-transfers">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="flex items-center gap-1.5">
+                <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Recent Transfers</p>
+              </div>
+              <Link href="/transfers" className="text-xs text-primary hover:text-primary/80">View all</Link>
+            </div>
+            <div className="space-y-0.5">
+              {transfers.slice(0, 2).map((tr) => {
+                const fromAcc = accounts.find((a) => a.id === tr.fromAccountId);
+                const toAcc   = accounts.find((a) => a.id === tr.toAccountId);
+                const isCross = tr.fromCurrencyCode !== tr.toCurrencyCode;
+                return (
+                  <div key={tr.id} className="flex items-center gap-2 py-2 px-2 rounded-xl hover:bg-white/5">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+                      <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">
+                        {fromAcc?.name ?? "Deleted"} → {toAcc?.name ?? "Deleted"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{tr.date}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs font-semibold text-indigo-400 tabular-nums">
+                        {formatMoney(tr.fromAmountCents, tr.fromCurrencyCode)}
+                      </p>
+                      {isCross && (
+                        <p className="text-[10px] text-indigo-300/60 tabular-nums">
+                          → {formatMoney(tr.toAmountCents, tr.toCurrencyCode)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
 
         {/* ── This Week ───────────────────────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className={`glass-card ${cardPad} rounded-2xl`} data-testid="card-this-week">
@@ -847,6 +894,29 @@ export default function Dashboard() {
                   toast({ title: `${label} saved` });
                 }}
                 onCancel={closeQa}
+              />
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Transfer quick-action drawer */}
+      <Drawer open={transferDrawerOpen} onOpenChange={(o) => { if (!o) setTransferDrawerOpen(false); }}>
+        <DrawerContent className="bg-background border-t border-white/10 text-foreground flex flex-col max-h-[92dvh]">
+          <DrawerHeader className="px-4 pt-2 pb-2 flex-shrink-0">
+            <DrawerTitle>New Transfer</DrawerTitle>
+          </DrawerHeader>
+          <div
+            className="flex-1 overflow-y-auto px-4"
+            style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))" }}
+          >
+            {transferDrawerOpen && (
+              <TransferForm
+                onSuccess={() => {
+                  setTransferDrawerOpen(false);
+                  toast({ title: "Transfer saved" });
+                }}
+                onCancel={() => setTransferDrawerOpen(false)}
               />
             )}
           </div>

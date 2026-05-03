@@ -24,12 +24,30 @@ export interface Transaction {
   updatedAt: string;
 }
 
+export interface Transfer {
+  id: string;
+  date: string;
+  fromAccountId: string;
+  toAccountId: string;
+  fromAmountCents: number;
+  fromCurrencyCode: 'USD' | 'BRL';
+  toAmountCents: number;
+  toCurrencyCode: 'USD' | 'BRL';
+  exchangeRate?: number;
+  feeAmountCents?: number;
+  feeCurrencyCode?: 'USD' | 'BRL';
+  description?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Budget {
   id: string;
   category: string;
   currencyCode: 'USD' | 'BRL';
   monthlyLimitCents: number;
-  month: string; // YYYY-MM
+  month: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -46,7 +64,7 @@ export interface FinancialGoal {
   targetAmountCents: number;
   currentAmountCents: number;
   currencyCode: 'USD' | 'BRL';
-  targetDate?: string; // YYYY-MM-DD
+  targetDate?: string;
   notes?: string;
   isArchived: boolean;
   createdAt: string;
@@ -63,7 +81,7 @@ export interface NetWorthAccountBreakdown {
 
 export interface NetWorthSnapshot {
   id: string;
-  snapshotDate: string; // YYYY-MM-DD
+  snapshotDate: string;
   totalUsdCents: number;
   totalBrlCents: number;
   exchangeRateBrlPerUsd?: number;
@@ -77,8 +95,8 @@ export interface NetWorthSnapshot {
 
 export interface WeeklyPlan {
   id: string;
-  weekStartDate: string; // YYYY-MM-DD (Monday)
-  weekEndDate: string;   // YYYY-MM-DD (Sunday)
+  weekStartDate: string;
+  weekEndDate: string;
   currencyCode: 'USD' | 'BRL';
   expectedIncomeCents: number;
   plannedFixedExpensesCents: number;
@@ -100,8 +118,8 @@ export interface RecurringRule {
   description: string;
   notes?: string;
   frequency: RecurringFrequency;
-  startDate: string; // YYYY-MM-DD
-  endDate?: string;  // YYYY-MM-DD
+  startDate: string;
+  endDate?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

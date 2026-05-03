@@ -1,0 +1,309 @@
+Continue working on the existing Viniverse – Finances app. Do not rebuild the project from scratch.
+
+This is Phase 2.4 — Account Transfers & FX Moves.
+
+Important direction:
+Do NOT add CSV export, PDF export, cloud sync, biometric auth, bank integrations, external APIs, or AI APIs in this phase.
+We are adding internal account transfers and currency conversion moves inside the existing local-first app.
+
+Inspect the current codebase first and preserve the existing React/Vite/TypeScript/Tailwind/Dexie architecture, dark glassmorphism UI, IndexedDB local-first storage, transactions, accounts, budgets, recurring rules, financial goals, net worth snapshots, weekly cashflow, monthly reports, cashflow calendar, quick templates, PIN lock, PWA setup, Real Life Setup Wizard, Dashboard quick actions, backup/import/export, and all current behavior.
+
+Goal:
+Add a proper Transfers feature so the user can move money between existing accounts without counting it as income or expense.
+
+Examples:
+- Cash Wallet → US Checking
+- US Checking → Cash Wallet
+- US Checking → Brazil Investments
+- US Checking → Brazil Checking/Savings
+- Brazil Checking/Savings → Brazil Investments
+- Any account → any account
+
+Important financial rule:
+Transfers are NOT income.
+Transfers are NOT expenses.
+Transfers should affect account balances and net worth, but should not inflate income/expense reports, budgets, or spending summaries.
+
+Important constraints:
+- Do not rebuild the app.
+- Do not add backend, authentication, Firebase, Supabase, paid APIs, AI APIs, bank integrations, external services, CSV export, or PDF export.
+- Do not break existing data.
+- Do not break existing income/expense transaction behavior.
+- Do not break backup/import/export.
+- Keep bottom navigation unchanged:
+  Home / Transactions / Budgets / Accounts / More
+
+1. Database
+Add a new Dexie table:
+transfers
+
+Upgrade schema safely to the next version.
+
+Transfer fields:
+- id
+- date
+- fromAccountId
+- toAccountId
+- fromAmountCents
+- fromCurrencyCode
+- toAmountCents
+- toCurrencyCode
+- exchangeRate optional number
+- feeAmountCents optional number
+- feeCurrencyCode optional USD or BRL
+- description optional string
+- notes optional string
+- createdAt
+- updatedAt
+
+Rules:
+- fromAccountId and toAccountId must be different.
+- fromAmountCents must be > 0.
+- toAmountCents must be > 0.
+- Currency codes should normally match the linked accounts.
+- If fromCurrencyCode !== toCurrencyCode, show exchange rate information.
+- Existing data must remain untouched.
+- Old backups without transfers must still import safely.
+- Clear All Data should clear transfers with the rest of financial data.
+- PIN settings must remain untouched.
+
+2. Balance calculation update
+Update all account balance calculations so transfers affect balances.
+
+For each account:
+- Current balance = initialBalance + income transactions - expense transactions + incoming transfers - outgoing transfers - applicable transfer fees
+
+Rules:
+- outgoing transfer subtracts from fromAccount
+- incoming transfer adds to toAccount
+- if fee is in the same currency and associated with fromAccount, subtract fee from fromAccount
+- transfers should not affect income totals
+- transfers should not affect expense totals
+- transfers should not affect budgets
+
+Update helpers consistently wherever balances are calculated:
+- Dashboard balances
+- Accounts page
+- Account detail drawer
+- Net Worth Tracker
+- Setup baseline snapshot if it uses account balances
+- Any other helper that calculates current balance
+
+3. Hooks/helpers
+In use-finance or an appropriate helper file, add:
+- useLiveTransfers
+- addTransfer
+- updateTransfer
+- deleteTransfer
+- calcAccountBalance should include transfers
+- any helper needed to get transfers by month/date/account
+
+Keep style consistent with existing hooks.
+
+4. Transfer form/drawer
+Create a mobile-friendly TransferForm and/or TransferDrawer.
+
+Fields:
+- Date
+- From account
+- To account
+- From amount
+- To amount
+- Exchange rate display/input if currencies differ
+- Fee amount optional
+- Fee currency optional
+- Description
+- Notes
+
+Behavior:
+- When source and destination accounts use the same currency:
+  - default toAmount = fromAmount
+  - exchangeRate hidden or shown as 1.00
+- When currencies differ:
+  - user can enter fromAmount and exchangeRate, then app suggests toAmount
+  - user can also edit toAmount manually
+  - show a small helper like:
+    “This is a currency transfer, not income.”
+- Do not fetch live exchange rates.
+- Exchange rate is manual only.
+- Save button visible on mobile.
+- Cancel button visible.
+- Prevent double-submit.
+- Use the fixed drawer scroll pattern:
+  DrawerContent flex flex-col max-h-[92dvh]
+  inner flex-1 overflow-y-auto wrapper
+  safe-area bottom padding
+
+5. Transfers page
+Create route:
+- /transfers
+
+Page name:
+- Transfers
+
+Add feature card in More/Settings:
+- “Transfers”
+- Subtitle: “Move money between accounts without counting it as income.”
+
+Transfers page should include:
+- Add Transfer button
+- Month selector
+- Currency/account filters if simple
+- Transfer list sorted newest first
+- Each transfer card shows:
+  - date
+  - from account → to account
+  - from amount
+  - to amount
+  - exchange rate if currencies differ
+  - fee if present
+  - description/notes preview
+- Tap transfer to edit/view details
+- Delete transfer with confirmation
+
+6. Dashboard integration
+Add a Quick Action button:
+- Transfer
+
+In Dashboard Quick Actions:
+- Add Transfer button should open transfer drawer or navigate to /transfers if opening drawer is risky.
+- Prefer opening a drawer if safe.
+- If the Quick Actions grid becomes too crowded, use a 3x2 grid:
+  Expense / Income / Transfer
+  Generate / Snapshot / Backup
+
+Add a compact recent transfers section or small line in balances if useful:
+- “Recent transfers”
+- show last 2 transfers
+- CTA: View Transfers
+
+Keep Dashboard clean. Do not make it noisy.
+
+7. Accounts integration
+On Accounts page or Account Detail Drawer, add visibility into transfers:
+- Account detail should show recent transfers involving that account if easy.
+- Current balance must reflect transfers.
+- If a user deletes an account that is used in transfers, keep existing safety pattern:
+  - either warn clearly
+  - or prevent delete if account has transfers
+  - do not crash linked transfer records
+
+8. Transactions page behavior
+Do not mix transfers with income/expense transactions unless clearly labeled.
+
+Preferred:
+- Transfers remain on Transfers page.
+- Transactions page remains income/expense only.
+
+Optional:
+- Add a small link/button:
+  “Need to move money? Add Transfer”
+  linking to /transfers.
+
+Do not count transfers as transactions in income/expense reports.
+
+9. Reports and Weekly Cashflow
+Ensure transfers do not distort:
+- monthly income
+- monthly expenses
+- savings rate
+- budgets
+- weekly income
+- weekly expenses
+- safe-to-spend
+- category spending
+- top expenses
+
+Optional:
+- Reports may include a small informational section:
+  “Transfers this month”
+  showing number and total moved by currency.
+But keep it separate from income/expense.
+
+10. Cashflow Calendar
+Add transfers to calendar only if it is clean and low risk.
+
+Preferred behavior:
+- Calendar day detail can show transfers on that date in a separate “Transfers” subsection.
+- Daily net income/expense should not include transfers.
+- Calendar dots may show a neutral transfer dot if simple.
+
+If this creates complexity, skip Calendar integration for now.
+
+11. Backup/import/export JSON
+Update existing JSON backup/import/export:
+- bump backup version to next version
+- include transfers array
+- old backups without transfers must still import safely
+- missing transfers defaults to []
+- invalid transfer data should not crash import
+- PIN hash/salt must never be exported
+
+12. Empty states
+If no transfers exist:
+- Transfers page shows:
+  “No transfers yet.”
+  “Use transfers when moving money between your own accounts, like cash to checking or US dollars to Brazil investments.”
+  button: “Add Transfer”
+
+13. UI polish
+Keep dark iOS-like glassmorphism.
+Transfers should feel distinct from income/expense:
+- use neutral/blue/indigo styling
+- use arrows between accounts
+- make currency conversion obvious
+- make it clear this does not count as income or spending
+
+14. Data safety
+Handle safely:
+- no accounts
+- only one account
+- missing/deleted account references
+- same from/to account selected
+- invalid amount
+- invalid exchange rate
+- invalid dates
+- transfer with different currencies
+- fee greater than amount
+- deleted accounts linked to old transfers
+
+15. Testing
+Run TypeScript checks and fix all errors.
+Check console/runtime logs and fix runtime errors.
+
+Manually verify:
+- More → Transfers opens /transfers
+- Add same-currency transfer: Cash Wallet → US Checking, $100 → balances update correctly
+- Add reverse transfer: US Checking → Cash Wallet → balances update correctly
+- Add cross-currency transfer: US Checking USD → Brazil Investments BRL with manual exchange rate
+- fromAccount decreases by USD amount
+- toAccount increases by BRL amount
+- exchange rate displayed
+- transfer does not increase income
+- transfer does not increase expenses
+- budgets do not change
+- Dashboard balances update
+- Accounts page balances update
+- Net Worth uses updated balances
+- Reports income/expense remain unchanged except optional separate transfers section
+- Weekly Cashflow income/expense remain unchanged
+- Edit transfer updates balances correctly
+- Delete transfer reverses its balance effect
+- Backup export includes transfers
+- Import old backup without transfers still works
+- Clear All Data clears transfers
+- PIN settings untouched
+- Existing pages still work:
+  Dashboard, Transactions, Accounts, Budgets, Recurring, Goals, Net Worth, Weekly Cashflow, Reports, Calendar, Quick Templates, Setup, More, PIN Lock, PWA, Backup/Import/Export
+
+Deliverable:
+At the end, summarize:
+- files inspected
+- files created
+- files updated
+- database schema changes
+- transfer behavior added
+- balance calculation changes
+- dashboard/accounts integration
+- backup/import changes
+- what I should test manually next

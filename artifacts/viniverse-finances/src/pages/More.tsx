@@ -7,7 +7,7 @@ import { clearAllData, db } from "@/hooks/use-finance";
 import {
   Download, Upload, Trash2, Info, Shield, AlertTriangle,
   RefreshCw, Target, TrendingUp, BarChart2, ChevronRight, FileBarChart2,
-  Lock, LockOpen, ShieldCheck, Timer, Wand2, CalendarDays, Layers,
+  Lock, LockOpen, ShieldCheck, Timer, Wand2, CalendarDays, Layers, ArrowLeftRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PinSetupDrawer, type PinSetupMode } from "@/components/PinSetupDrawer";
@@ -57,13 +57,22 @@ export default function More() {
   // ── Export ────────────────────────────────────────────────────────────────
   const handleExport = async () => {
     try {
-      const [accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots, weeklyPlans, quickTemplates] = await Promise.all([
+      const [
+        accounts, transactions, budgets, recurringRules, financialGoals,
+        netWorthSnapshots, weeklyPlans, quickTemplates, transfers,
+      ] = await Promise.all([
         db.accounts.toArray(), db.transactions.toArray(), db.budgets.toArray(),
         db.recurringRules.toArray(), db.financialGoals.toArray(),
-        db.netWorthSnapshots.toArray(), db.weeklyPlans.toArray(), db.quickTemplates.toArray(),
+        db.netWorthSnapshots.toArray(), db.weeklyPlans.toArray(),
+        db.quickTemplates.toArray(), db.transfers.toArray(),
       ]);
       // NOTE: PIN hash/salt is intentionally excluded from export
-      const data = { accounts, transactions, budgets, recurringRules, financialGoals, netWorthSnapshots, weeklyPlans, quickTemplates, exportedAt: new Date().toISOString(), version: 7 };
+      const data = {
+        accounts, transactions, budgets, recurringRules, financialGoals,
+        netWorthSnapshots, weeklyPlans, quickTemplates, transfers,
+        exportedAt: new Date().toISOString(),
+        version: 8,
+      };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
@@ -97,6 +106,7 @@ export default function More() {
       const netWorthSnapshots = Array.isArray(p.netWorthSnapshots) ? (p.netWorthSnapshots as unknown[]) : [];
       const weeklyPlans       = Array.isArray(p.weeklyPlans)       ? (p.weeklyPlans       as unknown[]) : [];
       const quickTemplates    = Array.isArray(p.quickTemplates)    ? (p.quickTemplates    as unknown[]) : [];
+      const transfers         = Array.isArray(p.transfers)         ? (p.transfers         as unknown[]) : [];
       await clearAllData();
       await db.accounts.bulkAdd(accounts      as Parameters<typeof db.accounts.bulkAdd>[0]);
       await db.transactions.bulkAdd(transactions as Parameters<typeof db.transactions.bulkAdd>[0]);
@@ -106,11 +116,12 @@ export default function More() {
       if (netWorthSnapshots.length) await db.netWorthSnapshots.bulkAdd(netWorthSnapshots as Parameters<typeof db.netWorthSnapshots.bulkAdd>[0]);
       if (weeklyPlans.length)       await db.weeklyPlans.bulkAdd(weeklyPlans       as Parameters<typeof db.weeklyPlans.bulkAdd>[0]);
       if (quickTemplates.length)    await db.quickTemplates.bulkAdd(quickTemplates  as Parameters<typeof db.quickTemplates.bulkAdd>[0]);
+      if (transfers.length)         await db.transfers.bulkAdd(transfers            as Parameters<typeof db.transfers.bulkAdd>[0]);
       // NOTE: PIN settings are intentionally NOT imported — they stay as-is
       localStorage.setItem('viniverse-onboarded', 'true');
       toast({
         title: "Import successful",
-        description: `${accounts.length} accounts, ${transactions.length} transactions, ${budgets.length} budgets, ${recurringRules.length} rules, ${financialGoals.length} goals, ${netWorthSnapshots.length} snapshots, ${weeklyPlans.length} plans, ${quickTemplates.length} templates.`,
+        description: `${accounts.length} accounts, ${transactions.length} transactions, ${budgets.length} budgets, ${recurringRules.length} rules, ${financialGoals.length} goals, ${netWorthSnapshots.length} snapshots, ${weeklyPlans.length} plans, ${quickTemplates.length} templates, ${transfers.length} transfers.`,
       });
       setTimeout(() => { window.location.reload(); }, 1200);
     } catch { toast({ title: "Import failed", description: "Something went wrong while restoring your data.", variant: "destructive" }); }
@@ -143,7 +154,7 @@ export default function More() {
           </div>
           <div>
             <h3 className="font-semibold">Viniverse – Finances</h3>
-            <p className="text-xs text-muted-foreground">Version 1.9.0 · Personal finance tracker</p>
+            <p className="text-xs text-muted-foreground">Version 2.0.0 · Personal finance tracker</p>
           </div>
         </div>
 
@@ -153,13 +164,14 @@ export default function More() {
           <div className="glass-card rounded-2xl overflow-hidden divide-y divide-white/10 border border-white/10">
             {[
               { href: "/setup",            icon: <Wand2         className="w-4 h-4 text-purple-400" />,  bg: "bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-purple-500/10", title: "Real Life Setup",         desc: "Set up your real accounts, income, bills, and goals" },
+              { href: "/transfers",        icon: <ArrowLeftRight className="w-4 h-4 text-indigo-400" />, bg: "bg-indigo-500/10",  title: "Transfers",                desc: "Move money between accounts without counting it as income." },
               { href: "/calendar",         icon: <CalendarDays  className="w-4 h-4 text-rose-400" />,   bg: "bg-rose-500/10",    title: "Cashflow Calendar",        desc: "See upcoming income, bills, and daily money flow." },
               { href: "/quick-templates",  icon: <Layers        className="w-4 h-4 text-violet-400" />, bg: "bg-violet-500/10",  title: "Quick Add Templates",      desc: "Create shortcuts for frequent income and expenses." },
               { href: "/recurring",        icon: <RefreshCw     className="w-4 h-4 text-indigo-400" />,  bg: "bg-indigo-500/10",  title: "Recurring Transactions",  desc: "Automate income and expense rules" },
-              { href: "/goals",           icon: <Target        className="w-4 h-4 text-emerald-400" />, bg: "bg-emerald-500/10", title: "Financial Goals",         desc: "Track savings targets and milestones" },
-              { href: "/net-worth",       icon: <TrendingUp    className="w-4 h-4 text-cyan-400" />,   bg: "bg-cyan-500/10",    title: "Net Worth Tracker",       desc: "Monitor and snapshot financial growth" },
-              { href: "/weekly-cashflow", icon: <BarChart2     className="w-4 h-4 text-violet-400" />, bg: "bg-violet-500/10",  title: "Weekly Cashflow",         desc: "Plan and track money week by week" },
-              { href: "/reports",         icon: <FileBarChart2 className="w-4 h-4 text-orange-400" />, bg: "bg-orange-500/10",  title: "Monthly Reports",         desc: "Full breakdown, insights, and trends" },
+              { href: "/goals",            icon: <Target        className="w-4 h-4 text-emerald-400" />, bg: "bg-emerald-500/10", title: "Financial Goals",         desc: "Track savings targets and milestones" },
+              { href: "/net-worth",        icon: <TrendingUp    className="w-4 h-4 text-cyan-400" />,   bg: "bg-cyan-500/10",    title: "Net Worth Tracker",       desc: "Monitor and snapshot financial growth" },
+              { href: "/weekly-cashflow",  icon: <BarChart2     className="w-4 h-4 text-violet-400" />, bg: "bg-violet-500/10",  title: "Weekly Cashflow",         desc: "Plan and track money week by week" },
+              { href: "/reports",          icon: <FileBarChart2 className="w-4 h-4 text-orange-400" />, bg: "bg-orange-500/10",  title: "Monthly Reports",         desc: "Full breakdown, insights, and trends" },
             ].map(({ href, icon, bg, title, desc }) => (
               <Link key={href} href={href} className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors">
                 <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>{icon}</div>
@@ -288,11 +300,11 @@ export default function More() {
           <div className="glass-card rounded-2xl overflow-hidden divide-y divide-white/10 border border-white/10">
             <button onClick={handleExport} data-testid="btn-export" className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0"><Download className="w-4 h-4 text-emerald-400" /></div>
-              <div><h3 className="font-medium text-sm">Export Backup</h3><p className="text-xs text-muted-foreground">v6 — includes all data and weekly plans</p></div>
+              <div><h3 className="font-medium text-sm">Export Backup</h3><p className="text-xs text-muted-foreground">v8 — includes all data, templates and transfers</p></div>
             </button>
             <button onClick={() => fileInputRef.current?.click()} data-testid="btn-import" className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0"><Upload className="w-4 h-4 text-blue-400" /></div>
-              <div><h3 className="font-medium text-sm">Import Backup</h3><p className="text-xs text-muted-foreground">Restore from a v1–v6 JSON file</p></div>
+              <div><h3 className="font-medium text-sm">Import Backup</h3><p className="text-xs text-muted-foreground">Restore from a v1–v8 JSON file</p></div>
             </button>
             <input type="file" accept=".json,application/json" className="hidden" ref={fileInputRef} onChange={handleImport} />
             <button onClick={() => setShowDeleteConfirm(!showDeleteConfirm)} data-testid="btn-toggle-delete" className="w-full p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left text-rose-400">
@@ -309,7 +321,7 @@ export default function More() {
               <div>
                 <p className="text-sm font-semibold text-rose-400">Confirm deletion</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  This will permanently erase all accounts, transactions, budgets, recurring rules, goals, snapshots, and weekly plans.
+                  This will permanently erase all accounts, transactions, budgets, recurring rules, goals, snapshots, weekly plans, templates, and transfers.
                   Type <span className="font-mono font-bold text-rose-400">DELETE</span> to confirm.
                 </p>
               </div>

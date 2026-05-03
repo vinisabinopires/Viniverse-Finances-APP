@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
-import { useLiveAccounts, useLiveTransactions } from "@/hooks/use-finance";
+import { useLiveAccounts, useLiveTransactions, useLiveTransfers, calcAccountBalance } from "@/hooks/use-finance";
 import { AccountCard } from "@/components/AccountCard";
 import { AccountDrawer } from "@/components/AccountDrawer";
 import { AccountDetailDrawer } from "@/components/AccountDetailDrawer";
@@ -8,22 +8,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Account } from "@/types";
 
 export default function Accounts() {
-  const accounts = useLiveAccounts();
+  const accounts     = useLiveAccounts();
   const transactions = useLiveTransactions();
+  const transfers    = useLiveTransfers();
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-
-  const getAccountBalance = (accountId: string, initialBalanceCents: number) => {
-    const accTx = transactions.filter((t) => t.accountId === accountId);
-    const income = accTx.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amountCents, 0);
-    const expense = accTx.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amountCents, 0);
-    return initialBalanceCents + income - expense;
-  };
 
   const getAccountTxCount = (accountId: string) =>
     transactions.filter((t) => t.accountId === accountId).length;
 
   const selectedBalance = selectedAccount
-    ? getAccountBalance(selectedAccount.id, selectedAccount.initialBalanceCents)
+    ? calcAccountBalance(selectedAccount, transactions, transfers)
     : 0;
 
   return (
@@ -44,7 +38,7 @@ export default function Accounts() {
         <div className="space-y-3">
           <AnimatePresence>
             {accounts.map((account, i) => {
-              const balanceCents = getAccountBalance(account.id, account.initialBalanceCents);
+              const balanceCents = calcAccountBalance(account, transactions, transfers);
               return (
                 <motion.div
                   key={account.id}
