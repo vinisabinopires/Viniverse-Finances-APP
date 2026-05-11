@@ -252,7 +252,12 @@ export default function Dashboard() {
   const monthBudgets = budgets
     .filter((b) => b.month === currentMonth)
     .map((b) => ({ budget: b, spent: calcBudgetSpent(transactions, b.category, b.month, b.currencyCode), pct: 0 }))
-    .map((x) => ({ ...x, pct: Math.round((x.spent / x.budget.monthlyLimitCents) * 100) }))
+    .map((x) => ({
+      ...x,
+      pct: x.budget.monthlyLimitCents > 0
+        ? Math.round((x.spent / x.budget.monthlyLimitCents) * 100)
+        : 0,
+    }))
     .sort((a, b) => b.pct - a.pct).slice(0, 5);
 
   // ─── Top categories ──────────────────────────────────────────────────────
