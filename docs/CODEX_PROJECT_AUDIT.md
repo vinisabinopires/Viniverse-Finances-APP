@@ -138,7 +138,7 @@ Commands run after build-stabilization changes:
 ### Fixes applied
 - Added a zero-division guard in Dashboard budget percentage calculation:
   - If `monthlyLimitCents > 0`, calculate percentage normally.
-  - Otherwise, fall back to `0`.
+  - Otherwise, fall back to 100 if spent > 0, or 0 if nothing was spent.
 - This is a small runtime-stability fix only; no schema changes and no UI redesign.
 
 ### Remaining known limitations
