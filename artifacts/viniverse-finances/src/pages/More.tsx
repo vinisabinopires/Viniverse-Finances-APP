@@ -28,6 +28,19 @@ export default function More() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteInputValue, setDeleteInputValue] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [restoreConfirmValue, setRestoreConfirmValue] = useState("");
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<{
+    accounts: unknown[];
+    transactions: unknown[];
+    budgets: unknown[];
+    recurringRules: unknown[];
+    financialGoals: unknown[];
+    netWorthSnapshots: unknown[];
+    weeklyPlans: unknown[];
+    quickTemplates: unknown[];
+    transfers: unknown[];
+  } | null>(null);
 
   // ── PIN state (read from localStorage) ───────────────────────────────────
   const [pinEnabled, setPinEnabled] = useState(() => isPinEnabled());
@@ -94,19 +107,62 @@ export default function More() {
     try { parsed = JSON.parse(await file.text()); }
     catch { toast({ title: "Import failed", description: "The file is not valid JSON.", variant: "destructive" }); return; }
     const p = parsed as Record<string, unknown>;
-    if (typeof p !== "object" || p === null || !Array.isArray(p.accounts) || !Array.isArray(p.transactions)) {
+    const requiredArrayFields = [
+      "accounts",
+      "transactions",
+      "budgets",
+      "recurringRules",
+      "financialGoals",
+      "netWorthSnapshots",
+      "weeklyPlans",
+      "quickTemplates",
+      "transfers",
+    ] as const;
+    if (typeof p !== "object" || p === null) {
       toast({ title: "Import failed", description: "The file doesn't look like a Viniverse backup.", variant: "destructive" });
       return;
     }
+
+    if (!requiredArrayFields.every((k) => Array.isArray(p[k]))) {
+      toast({
+        title: "Import failed",
+        description: "Unknown backup format. Expected Viniverse JSON with all top-level data lists.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (typeof p.version !== "number" || typeof p.exportedAt !== "string") {
+      toast({
+        title: "Import failed",
+        description: "Backup is missing metadata fields (version/exportedAt).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPendingRestore({
+      accounts: p.accounts as unknown[],
+      transactions: p.transactions as unknown[],
+      budgets: p.budgets as unknown[],
+      recurringRules: p.recurringRules as unknown[],
+      financialGoals: p.financialGoals as unknown[],
+      netWorthSnapshots: p.netWorthSnapshots as unknown[],
+      weeklyPlans: p.weeklyPlans as unknown[],
+      quickTemplates: p.quickTemplates as unknown[],
+      transfers: p.transfers as unknown[],
+    });
+    setRestoreConfirmValue("");
+    setShowRestoreConfirm(true);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!pendingRestore || restoreConfirmValue !== "RESTORE") return;
     try {
-      const { accounts, transactions } = p as { accounts: unknown[]; transactions: unknown[] };
-      const budgets           = Array.isArray(p.budgets)           ? (p.budgets           as unknown[]) : [];
-      const recurringRules    = Array.isArray(p.recurringRules)    ? (p.recurringRules    as unknown[]) : [];
-      const financialGoals    = Array.isArray(p.financialGoals)    ? (p.financialGoals    as unknown[]) : [];
-      const netWorthSnapshots = Array.isArray(p.netWorthSnapshots) ? (p.netWorthSnapshots as unknown[]) : [];
-      const weeklyPlans       = Array.isArray(p.weeklyPlans)       ? (p.weeklyPlans       as unknown[]) : [];
-      const quickTemplates    = Array.isArray(p.quickTemplates)    ? (p.quickTemplates    as unknown[]) : [];
-      const transfers         = Array.isArray(p.transfers)         ? (p.transfers         as unknown[]) : [];
+      const {
+        accounts, transactions, budgets, recurringRules, financialGoals,
+        netWorthSnapshots, weeklyPlans, quickTemplates, transfers,
+      } = pendingRestore;
       await clearAllData();
       await db.accounts.bulkAdd(accounts      as Parameters<typeof db.accounts.bulkAdd>[0]);
       await db.transactions.bulkAdd(transactions as Parameters<typeof db.transactions.bulkAdd>[0]);
@@ -119,12 +175,17 @@ export default function More() {
       if (transfers.length)         await db.transfers.bulkAdd(transfers            as Parameters<typeof db.transfers.bulkAdd>[0]);
       // NOTE: PIN settings are intentionally NOT imported — they stay as-is
       localStorage.setItem('viniverse-onboarded', 'true');
+      setShowRestoreConfirm(false);
+      setPendingRestore(null);
+      setRestoreConfirmValue("");
       toast({
-        title: "Import successful",
+        title: "Restore successful",
         description: `${accounts.length} accounts, ${transactions.length} transactions, ${budgets.length} budgets, ${recurringRules.length} rules, ${financialGoals.length} goals, ${netWorthSnapshots.length} snapshots, ${weeklyPlans.length} plans, ${quickTemplates.length} templates, ${transfers.length} transfers.`,
       });
       setTimeout(() => { window.location.reload(); }, 1200);
-    } catch { toast({ title: "Import failed", description: "Something went wrong while restoring your data.", variant: "destructive" }); }
+    } catch {
+      toast({ title: "Restore failed", description: "Something went wrong while restoring your data.", variant: "destructive" });
+    }
   };
 
   // ── Clear all ─────────────────────────────────────────────────────────────
@@ -332,6 +393,46 @@ export default function More() {
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { setShowDeleteConfirm(false); setDeleteInputValue(""); }} className="flex-1 bg-white/5 border-white/10 hover:bg-white/10" data-testid="btn-cancel-clear">Cancel</Button>
               <Button onClick={handleClearData} disabled={deleteInputValue !== "DELETE"} className="flex-1 bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-40" data-testid="btn-confirm-clear">Delete Everything</Button>
+            </div>
+          </div>
+        )}
+
+        {showRestoreConfirm && pendingRestore && (
+          <div className="glass-card rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5 space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-400">Confirm restore</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  This will replace all current local finance data with the selected backup file.
+                  Type <span className="font-mono font-bold text-amber-400">RESTORE</span> to continue.
+                </p>
+              </div>
+            </div>
+            <Input
+              placeholder="Type RESTORE to confirm"
+              value={restoreConfirmValue}
+              onChange={(e) => setRestoreConfirmValue(e.target.value)}
+              data-testid="input-restore-confirm"
+              className="bg-white/5 border-amber-500/30 font-mono placeholder:font-sans"
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { setShowRestoreConfirm(false); setPendingRestore(null); setRestoreConfirmValue(""); }}
+                className="flex-1 bg-white/5 border-white/10 hover:bg-white/10"
+                data-testid="btn-cancel-restore"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmRestore}
+                disabled={restoreConfirmValue !== "RESTORE"}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-black disabled:opacity-40"
+                data-testid="btn-confirm-restore"
+              >
+                Replace and Restore
+              </Button>
             </div>
           </div>
         )}
