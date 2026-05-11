@@ -256,7 +256,9 @@ export default function Dashboard() {
       ...x,
       pct: x.budget.monthlyLimitCents > 0
         ? Math.round((x.spent / x.budget.monthlyLimitCents) * 100)
-        : 0,
+        : x.spent > 0
+          ? 100
+          : 0,
     }))
     .sort((a, b) => b.pct - a.pct).slice(0, 5);
 
